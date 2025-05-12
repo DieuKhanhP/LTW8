@@ -701,7 +701,6 @@ class XuatKhoCreateView(CreateView):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
 
-
         with transaction.atomic():
             # Tự động tạo mã phiếu nếu không có
             if not form.instance.ma_xuat:
@@ -722,10 +721,15 @@ class XuatKhoCreateView(CreateView):
 
             # Lưu người tạo
             form.instance.tao_boi = self.request.user if self.request.user.is_authenticated else None
-            return super().form_valid(form)
-
+            
+            # Lưu phiếu xuất kho trước
             self.object = form.save()
 
+            # Debug thông tin formset
+            print("Formset is valid:", chitiet_formset.is_valid())
+            print("Formset errors:", chitiet_formset.errors)
+
+            # Sau đó lưu chi tiết xuất kho
             if chitiet_formset.is_valid():
                 chitiet_formset.instance = self.object
                 chitiet_formset.save()
@@ -739,6 +743,7 @@ class XuatKhoCreateView(CreateView):
                 return self.form_invalid(form)
 
     def get_success_url(self):
+        print("Redirecting to:", reverse_lazy('xuatkho-detail', kwargs={'ma_xuat': self.object.ma_xuat}))
         return reverse_lazy('xuatkho-detail', kwargs={'ma_xuat': self.object.ma_xuat})
 
 
@@ -931,7 +936,6 @@ def kiemke_update(request, ma_kiemke):
                 messages.error(request, f'Đã có lỗi xảy ra khi cập nhật: {e}')
         else:
             messages.error(request, 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.')
-            # Có thể bạn muốn render lại form với lỗi để người dùng sửa
             # context['kiemke_form'] = kiemke_form
             # context['chitiet_formset'] = chitiet_formset
             # return render(request, 'cuoiky/kiemke_update.html', context)
