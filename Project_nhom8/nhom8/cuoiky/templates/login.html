@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vật liệu xây dựng Xuân Trường - Đăng nhập</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+        }
+
+
+
+
+        .container {
+            display: flex;
+            height: 100%
+            justify-content: center;
+            align-items: center;
+            padding: 180px;
+        }
+
+        .left, .right {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .left img {
+            max-width: 600px;
+            height: 600px;
+        }
+
+        .right .login-box {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: #1d3557;
+            font-size: 20px;
+            border-bottom: 2px solid #1d3557;
+            padding-bottom: 10px;
+        }
+
+        .login-box input[type="text"],
+        .login-box input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .login-box label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 10px;
+            background-color: #0000cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+
+        .login-box button:hover {
+            background-color: #000099;
+        }
+
+        .login-box .footer {
+            margin-top: 10px;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .login-box .footer a {
+            color: #1d3557;
+            text-decoration: none;
+        }
+
+        .login-box .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .left, .right {
+                flex: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="left">
+            <div>
+                <img src="{% static 'images/logo.png' %}" alt="Logo">
+            </div>
+        </div>
+
+        <div class="right">
+            <div class="login-box">
+                <h2>ĐĂNG NHẬP VÀO TÀI KHOẢN</h2>
+                <form method="post">
+        {% csrf_token %}
+                    <label for="username">Tên đăng nhập:</label>
+                    <input type="text" name="username" required><br>
+                    <label for="password">Mật khẩu:</label>
+                    <input type="password" name="password" required><br>
+                    <button type="submit">Đăng Nhập</button>
+                 </form>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

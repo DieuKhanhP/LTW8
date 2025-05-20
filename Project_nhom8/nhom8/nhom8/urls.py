@@ -29,7 +29,7 @@ urlpatterns = [
     # Sửa ở đây:
     path('app/', include('cuoiky.urls')), # Hoặc path('cuoiky/', include('cuoiky.urls')), hoặc path('', include('cuoiky.urls'))
     # Redirect trang gốc (tùy chọn) - đảm bảo URL name bên dưới đúng
-    path('', lambda request: redirect('nhapkho-list', permanent=False)),
+    path('', lambda request: redirect('login', permanent=False)),
 ]
 
 if settings.DEBUG:

@@ -16,47 +16,102 @@
     .hang-hoa-row td {
         vertical-align: middle;
     }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .status-pending {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .status-approved {
+        background-color: #198754;
+        color: white;
+    }
+    .status-rejected {
+        background-color: #dc3545;
+        color: white;
+    }
+    .status-completed {
+        background-color: #0d6efd;
+        color: white;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .info-value {
+        color: #212529;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">CHI TIẾT PHIẾU NHẬP KHO: {{ nhapkho.ma_nhap }}</h5>
-    </div>
+<div class="card shadow rounded bg-light mb-4">
+    <h5 class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span>CHI TIẾT PHIẾU NHẬP KHO: {{ nhapkho.ma_nhap }}</span>
+        <div>
+            {% if nhapkho.tinh_trang == 'CHO_DUYET' %}
+                <span class="status-badge status-pending">{{ nhapkho.get_tinh_trang_display }}</span>
+            {% elif nhapkho.tinh_trang == 'DA_DUYET' %}
+                <span class="status-badge status-approved">{{ nhapkho.get_tinh_trang_display }}</span>
+            {% elif nhapkho.tinh_trang == 'TU_CHOI' %}
+                <span class="status-badge status-rejected">{{ nhapkho.get_tinh_trang_display }}</span>
+            {% endif %}
+        </div>
+    </h5>
+
     <div class="card-body">
-        <div class="row mb-3">
+        <div class="row mb-4">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label">Nguồn nhập</label>
-                    <p class="form-control-plaintext">{{ nhapkho.nguon_nhap }}</p>
+                    <label class="form-label fw-bold text-primary">Nhà cung cấp</label>
+                    <p class="form-control bg-white">{{ nhapkho.nguon_nhap }}</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Mã phiếu</label>
-                    <p class="form-control-plaintext">{{ nhapkho.ma_nhap }}</p>
+                    <label class="form-label fw-bold text-primary">Mã phiếu</label>
+                    <p class="form-control bg-white">{{ nhapkho.ma_nhap }}</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Số điện thoại</label>
-                    <p class="form-control-plaintext">{{ nhapkho.sdt|default:"-" }}</p>
+                    <label class="form-label fw-bold text-primary">Số điện thoại</label>
+                    <p class="form-control bg-white">{{ nhapkho.sdt|default:"-" }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Kho nhập</label>
+                    <p class="form-control bg-white">{{ nhapkho.kho }}</p>
                 </div>
             </div>
 
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label">Thời gian</label>
-                    <p class="form-control-plaintext">{{ nhapkho.thoi_gian|date:"d/m/Y H:i" }}</p>
+                    <label class="form-label fw-bold text-primary">Thời gian</label>
+                    <p class="form-control bg-white">{{ nhapkho.thoi_gian|date:"d/m/Y H:i" }}</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Địa chỉ</label>
-                    <p class="form-control-plaintext">{{ nhapkho.diachi|default:"-" }}</p>
+                    <label class="form-label fw-bold text-primary">Địa chỉ</label>
+                    <p class="form-control bg-white">{{ nhapkho.diachi|default:"-" }}</p>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Lý do nhập</label>
-                    <p class="form-control-plaintext">{{ nhapkho.ly_do|default:"-" }}</p>
+                    <label class="form-label fw-bold text-primary">Lý do nhập</label>
+                    <p class="form-control bg-white">
+                        {{ nhapkho.get_ly_do_display }}
+                        {% if nhapkho.ly_do == 'KHAC' %}
+                            <br><small>Lý do khác: {{ nhapkho.ly_do_khac|default:"-" }}</small>
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Người tạo</label>
+                    <p class="form-control bg-white">{{ nhapkho.tao_boi.get_full_name|default:nhapkho.tao_boi.username|default:"-" }}</p>
                 </div>
             </div>
         </div>
@@ -64,10 +119,12 @@
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label">Hợp đồng</label>
-                    <p class="form-control-plaintext">
+                    <label class="form-label fw-bold text-primary">Hợp đồng</label>
+                    <p class="form-control bg-white">
                         {% if nhapkho.url_hop_dong %}
-                            <a href="{{ nhapkho.url_hop_dong.url }}" target="_blank">Xem hợp đồng</a>
+                            <a href="{{ nhapkho.url_hop_dong.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-download me-1"></i> Xem hợp đồng
+                            </a>
                         {% else %}
                             -
                         {% endif %}
@@ -77,10 +134,12 @@
 
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label">Sổ cũ</label>
-                    <p class="form-control-plaintext">
+                    <label class="form-label fw-bold text-primary">Sổ cũ</label>
+                    <p class="form-control bg-white">
                         {% if nhapkho.url_so_cu %}
-                            <a href="{{ nhapkho.url_so_cu.url }}" target="_blank">Xem sổ cũ</a>
+                            <a href="{{ nhapkho.url_so_cu.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-download me-1"></i> Xem sổ cũ
+                            </a>
                         {% else %}
                             -
                         {% endif %}
@@ -89,9 +148,9 @@
             </div>
         </div>
 
-        <h5 class="mb-3">Chi tiết hàng hóa</h5>
+        <h5 class="mb-3 fw-bold text-primary">Chi tiết hàng hóa</h5>
 
-        <div class="table-responsive mb-3">
+        <div class="table-responsive mb-4">
             <table class="table table-bordered table-hover">
                 <thead class="table-dark">
                     <tr>
@@ -101,7 +160,7 @@
                         <th style="width: 15%">Đơn giá</th>
                         <th style="width: 10%">Số lượng</th>
                         <th style="width: 10%">Chiết khấu (%)</th>
-                        <th style="width: 10%">Thành tiền</th>
+                        <th style="width: 15%">Thành tiền</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,10 +189,53 @@
             </table>
         </div>
 
-        <div class="d-flex gap-2">
-            <a href="{% url 'nhapkho-list' %}" class="btn btn-secondary">
+        <div class="d-flex gap-2 mt-4">
+            <a href="{% url 'nhapkho-list' %}" class="btn btn-primary">
                 <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
             </a>
+
+            {% if nhapkho.tinh_trang == 'CHO_DUYET' %}
+                <a href="{% url 'nhapkho-update' nhapkho.ma_nhap %}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Sửa
+                </a>
+                <a href="{% url 'duyet-nhapkho' nhapkho.ma_nhap %}" class="btn btn-success">
+                    <i class="fas fa-check me-1"></i> Duyệt
+                </a>
+                <a href="{% url 'tu-choi-nhapkho' nhapkho.ma_nhap %}" class="btn btn-danger">
+                    <i class="fas fa-times me-1"></i> Từ chối
+                </a>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash-alt me-1"></i> Xóa
+                </button>
+
+            {% endif %}
+
+            <button type="button" class="btn btn-info" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> In phiếu
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa phiếu nhập kho <strong>{{ nhapkho.ma_nhap }}</strong> không?</p>
+                <p class="text-danger"><small>Lưu ý: Hành động này không thể hoàn tác.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form method="post" action="{% url 'nhapkho-delete' nhapkho.ma_nhap %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Xác nhận xóa</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

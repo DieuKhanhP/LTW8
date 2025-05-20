@@ -3,7 +3,7 @@
 
 {% block title %}Danh sách Hàng hóa - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Danh sách Hàng hóa{% endblock %}
+{% block page_title %}DANH SÁCH HÀNG HÓA {% endblock %}
 
 {% block content %}
 <form method="get" action="{% url 'hanghoa-list' %}" class="mb-3 p-3 bg-light border rounded">
@@ -65,7 +65,7 @@
                 <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td>{{ hh.ten_hang }}</td>
                 <td>{{ hh.ma_hang }}</td>
-                <td>{{ hh.nhom_hang }}</td>
+                <td>{{ hh.get_nhom_hang_display }}</td>
                 <td>{{ hh.don_vi_tinh }}</td>
                 <td class="text-end">{{ hh.so_luong_he_thong }}</td>
                 <td>{{ hh.get_tinh_trang_display }}</td>

@@ -3,9 +3,11 @@ from django.urls import path, include
 from rest_framework import routers
 
 from . import views
-
+from .views import login_view
 
 urlpatterns = [
+    path('login/', login_view, name='login'),
+    path('profile/', views.profile_view, name='profile'),
     # Sử dụng slug:<ma_hang> vì ma_hang là CharField và là primary_key
     # Nếu ma_hang chỉ chứa số, bạn có thể dùng <int:ma_hang> hoặc <str:ma_hang>
     # Tuy nhiên, slug an toàn hơn cho các mã có thể chứa chữ cái/ký tự đặc biệt
@@ -20,10 +22,8 @@ urlpatterns = [
     path('nhapkho/<str:ma_nhap>/sua/', views.NhapKhoUpdateView.as_view(), name='nhapkho-update'),
     path('nhapkho/import-excel/', views.import_hanghoa_excel, name='import-hanghoa-excel'),
     path('nhapkho/<str:ma_nhap>/xoa/', views.xoa_nhapkho, name='nhapkho-delete'),
-    path('nhapkho/<str:ma_nhap>/duyet/', views.duyet_nhapkho, name='nhapkho-duyet'),
-    path('nhapkho/<str:ma_nhap>/nhapkho/', views.nhap_kho, name='nhapkho-nhapkho'),
-    path('nhapkho/<str:ma_nhap>/tuchoi/', views.tu_choi_nhapkho, name='nhapkho-tuchoi'),
-
+    path('nhapkho/<str:ma_nhap>/duyet/', views.duyet_nhapkho, name='duyet-nhapkho'),
+    path('nhapkho/<str:ma_nhap>/tu-choi/', views.tu_choi_nhapkho, name='tu-choi-nhapkho'),
     path('xuatkho/', views.XuatKhoListView.as_view(), name='xuatkho-list'),
     path('xuatkho/them/', views.XuatKhoCreateView.as_view(), name='xuatkho-create'),
     path('xuatkho/<str:ma_xuat>/', views.XuatKhoDetailView.as_view(), name='xuatkho-detail'),

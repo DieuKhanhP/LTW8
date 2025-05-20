@@ -6,11 +6,8 @@ from .models import HangHoa # Import model HangHoa của bạn
 from django.urls import reverse_lazy
 from django.contrib.auth.models import User
 
-DEFAULT_USER_ID = 1
-from django.contrib.auth import get_user_model
 
 from django.db.models import Q # Để dùng OR trong query
-User = get_user_model()
 
 # Giả sử TINH_TRANG_TONKHO_CHOICES được định nghĩa ở đây hoặc import từ models
 # TINH_TRANG_TONKHO_CHOICES = [ ('CON_HANG', 'Còn hàng'), ('HET_HANG', 'Hết hàng'), ...]
@@ -19,7 +16,49 @@ from django.shortcuts import render
 from django.db.models import Sum, Count
 from django.utils import timezone
 from .models import HangHoa, NhapKho, XuatKho, KiemKe  # Import các model của bạn
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
 
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('tongquan')  # Chuyển hướng đến trang chính sau khi đăng nhập
+        else:
+            return render(request, 'login.html', {'error': 'Tên đăng nhập hoặc mật khẩu không đúng.'})
+    return render(request, 'login.html')
+
+from .forms import ProfileForm
+@login_required
+def profile_view(request):
+    """Hiển thị và cập nhật thông tin profile của người dùng."""
+
+    if request.method == 'POST':
+        profile_form = ProfileForm(request.POST, instance=request.user)
+
+        if profile_form.is_valid():
+            user = profile_form.save(commit=False)
+            # Đảm bảo lưu trường phone
+            user.phone = profile_form.cleaned_data.get('phone', '')
+            user.save()
+
+            messages.success(request, 'Thông tin cá nhân đã được cập nhật thành công!')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Có lỗi xảy ra khi cập nhật thông tin. Vui lòng kiểm tra lại.')
+    else:
+        profile_form = ProfileForm(instance=request.user)
+
+    context = {
+        'profile_form': profile_form,
+    }
+
+    return render(request, 'profile.html', context)
+
+@login_required
 def dashboard_view(request):
     """
     View này xử lý logic để lấy dữ liệu thống kê từ các model và truyền vào template.
@@ -136,7 +175,6 @@ class HangHoaListView(generic.ListView):
     paginate_by = 10 # Hoặc số lượng bạn muốn
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         queryset = super().get_queryset().order_by('-ma_hang')
         query_ma = self.request.GET.get('ma_hang')
         query_ten = self.request.GET.get('ten_hang')
@@ -168,38 +206,64 @@ class HangHoaListView(generic.ListView):
         context['request'] = self.request # Truyền request vào context để lấy GET params trong template
         return context
 
+from .forms import HangHoaForm
+
+
 class HangHoaCreateView(generic.CreateView):
     model = HangHoa
+    form_class = HangHoaForm
     template_name = 'cuoiky/hanghoa_form.html'
-    # Liệt kê các field từ model HangHoa bạn muốn hiển thị trên form
-    fields = ['ma_hang', 'ten_hang', 'nhom_hang', 'don_vi_tinh',
-              'so_luong_he_thong', 'han_su_dung', 'mo_ta',
-              'tinh_trang', 'url_image']
-    success_url = reverse_lazy('hanghoa-list') # URL name của trang danh sách
+    success_url = reverse_lazy('hanghoa-list')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        # Tạo mã hàng tự động khi mở form
+        last_item = HangHoa.objects.order_by('-ma_hang').first()
+        if last_item and last_item.ma_hang.startswith("HH"):
+            try:
+                last_number = int(last_item.ma_hang.replace("HH", ""))
+                new_number = last_number + 1
+            except ValueError:
+                new_number = 1
+        else:
+            new_number = 1
+        initial['ma_hang'] = f"HH{new_number:04d}"
+        return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = 'Thêm hàng hóa mới'
+        context['page_title'] = 'THÊM HÀNG HÓA MỚI'
         return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Đã thêm hàng hóa mới thành công!")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Có lỗi xảy ra khi thêm hàng hóa. Vui lòng kiểm tra lại thông tin.")
+        return super().form_invalid(form)
+
 
 class HangHoaUpdateView(generic.UpdateView):
     model = HangHoa
+    form_class = HangHoaForm
     template_name = 'cuoiky/hanghoa_form.html'
-    # Đảm bảo 'ma_hang' (PK) được dùng để xác định object
-    pk_url_kwarg = 'ma_hang' # Chỉ định tên param trong URL là ma_hang
-    context_object_name = 'hanghoa' # Tên biến context trong template
-    fields = ['ten_hang', 'nhom_hang', 'don_vi_tinh',
-              'so_luong_he_thong', 'han_su_dung', 'mo_ta',
-              'tinh_trang', 'url_image'] # Không cho sửa ma_hang (PK)
+    pk_url_kwarg = 'ma_hang'
+    context_object_name = 'hanghoa'
     success_url = reverse_lazy('hanghoa-list')
-
-
-
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = f'Cập nhật: {self.object.ten_hang}'
         return context
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Đã cập nhật hàng hóa {self.object.ten_hang} thành công!")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Có lỗi xảy ra khi cập nhật hàng hóa. Vui lòng kiểm tra lại thông tin.")
+        return super().form_invalid(form)
 
 
 # Bạn có thể thêm View xem chi tiết nếu cần
@@ -211,7 +275,7 @@ class HangHoaDetailView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = f'Chi tiết: {self.object.ten_hang}'
+        context['page_title'] = f'CHI TIẾT THÔNG TIN HÀNG HÓA : {self.object.ten_hang}'
         return context
 
 
@@ -245,27 +309,34 @@ from .forms import NhapKhoForm, ChiTietNhapForm
 def xoa_nhapkho(request, ma_nhap):
     nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
 
-    if nhapkho.tinh_trang != 'CHO_DUYET':
-        return JsonResponse({'status': 'error', 'message': 'Không thể xóa phiếu đã được duyệt hoặc đã nhập kho.'},
-                            status=400)
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ.'}, status=400)
 
-    if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                print(f"Các chi tiết nhập kho trước khi xóa: {nhapkho.chi_tiet_nhap.all()}")
-                nhapkho.chi_tiet_nhap.all().delete()
-                print("Đã xóa các chi tiết nhập kho.")
-                print(f"Phiếu nhập kho trước khi xóa: {nhapkho}")
-                nhapkho.delete()
-                print("Đã xóa phiếu nhập kho.")
-            return JsonResponse({'status': 'success', 'message': f'Phiếu nhập kho {ma_nhap} đã được xóa thành công.'})
-        except Exception as e:
-            print(f"Lỗi khi xóa phiếu nhập kho: {e}")
-            return JsonResponse({'status': 'error', 'message': f'Có lỗi xảy ra khi xóa phiếu nhập kho: {e}'},
-                                status=500)
+    try:
+        with transaction.atomic():
+            #  Nếu phiếu đã duyệt → cần trừ lại tồn kho
+            if nhapkho.tinh_trang == 'DA_DUYET':
+                for chitiet in nhapkho.chi_tiet_nhap.all():
+                    hanghoa = chitiet.ma_hang
+                    hanghoa.so_luong_he_thong -= chitiet.so_luong_nhap
+                    hanghoa.save()
+                    print(f"[-] Trừ {chitiet.so_luong_nhap} khỏi {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
 
-    # Nếu không phải POST (ví dụ, truy cập trực tiếp), trả về lỗi
-    return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ.'}, status=400)
+            #  Xóa chi tiết trước, rồi xóa phiếu
+            nhapkho.chi_tiet_nhap.all().delete()
+            nhapkho.delete()
+            print(f"Đã xóa phiếu nhập kho {ma_nhap} và cập nhật tồn kho")
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Phiếu nhập kho {ma_nhap} và hàng hóa liên quan đã được xóa thành công.'
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Có lỗi xảy ra khi xóa phiếu nhập kho: {str(e)}'
+        }, status=500)
 
 
 # Danh sách phiếu nhập kho
@@ -322,9 +393,13 @@ class NhapKhoDetailView(DetailView):
     pk_url_kwarg = 'ma_nhap'
 
     def get_object(self, queryset=None):
-        return get_object_or_404(NhapKho, ma_nhap=self.kwargs.get('ma_nhap'))
+        obj = get_object_or_404(NhapKho, ma_nhap=self.kwargs.get('ma_nhap'))
+        # Đảm bảo tổng tiền được cập nhật trước khi hiển thị
+        obj.tinh_lai_tong_tien()
+        return obj
 
 
+# Tạo phiếu nhập kho mới
 # Tạo phiếu nhập kho mới
 class NhapKhoCreateView(CreateView):
     model = NhapKho
@@ -332,65 +407,84 @@ class NhapKhoCreateView(CreateView):
     template_name = 'cuoiky/nhapkho_form.html'
     success_url = reverse_lazy('nhapkho-list')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        # Tạo mã nhập kho tự động khi mở form
+        prefix = 'NK'
+        last_nhap = NhapKho.objects.order_by('-ma_nhap').first()
+        if last_nhap and last_nhap.ma_nhap.startswith(prefix):
+            try:
+                last_number = int(last_nhap.ma_nhap.replace(prefix, ''))
+                new_number = last_number + 1
+            except ValueError:
+                new_number = 1
+        else:
+            new_number = 1
+        initial['ma_nhap'] = f"{prefix}{new_number:04d}"
+        return initial
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = 'Thêm mới phiếu nhập kho'
+        context['page_title'] = 'THÊM MỚI PHIẾU NHẬP KHO'
         if self.request.POST:
             context['chitiet_formset'] = ChiTietNhapFormSet(self.request.POST)
         else:
             context['chitiet_formset'] = ChiTietNhapFormSet(queryset=ChiTietNhap.objects.none())
-        context['all_hanghoa'] = HangHoa.objects.all().values('ma_hang', 'ten_hang', 'don_vi_tinh')  # Truyền tất cả hàng hóa vào context
+
+        # Lấy tất cả hàng hóa với đầy đủ thông tin bao gồm đơn giá nhập
+        context['all_hanghoa'] = HangHoa.objects.all().values('ma_hang', 'ten_hang', 'don_vi_tinh', 'don_gia_nhap')
         return context
 
     def form_valid(self, form):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
 
-        with transaction.atomic():
-            # Lưu phiếu nhập kho
-            self.object = form.save(commit=False)
+        self.object = form.save(commit=False)
+        self.object.tao_boi = self.request.user if self.request.user.is_authenticated else None
+        self.object.save()
 
-            # Gán người tạo
-            if not self.object.ma_nhap:
-                # Tạo mã nhập kho nếu chưa có
-                last_nhap = NhapKho.objects.order_by('-id').first()
-                last_id = int(last_nhap.ma_nhap[2:]) if last_nhap else 0
-                self.object.ma_nhap = f"NK{last_id + 1:04d}"
+        chitiet_formset.instance = self.object
 
-            self.object.save()
-            print("Phiếu nhập kho đã được lưu:", self.object) #in ra object vừa save
+        if chitiet_formset.is_valid():  # Bắt buộc gọi trước!
+            has_valid_details = any(
+                f.cleaned_data and not f.cleaned_data.get('DELETE', False) and f.cleaned_data.get('ma_hang')
+                for f in chitiet_formset.forms
+            )
+            if not has_valid_details:
+                messages.error(self.request, "Vui lòng thêm ít nhất một hàng hóa vào phiếu nhập kho.")
+                self.object.delete()
+                return self.form_invalid(form)
 
-            if chitiet_formset.is_valid():
-                chitiet_formset.instance = self.object
-                instances = chitiet_formset.save(commit=False)
-                for instance in instances:
-                    instance.ma_nhap = self.object
-                    instance.save()
-                self.object.tinh_lai_tong_tien()
-                messages.success(self.request, "Tạo phiếu nhập kho thành công!")
-                return redirect('nhapkho-detail', ma_nhap=self.object.ma_nhap)
-
-            messages.error(self.request, "Có lỗi xảy ra khi lưu chi tiết nhập kho")
-            return self.render_to_response(self.get_context_data(form=form))
+            chitiet_formset.save()
+            self.object.tinh_lai_tong_tien()
+            messages.success(self.request, "Tạo phiếu nhập kho thành công!")
+            return redirect('nhapkho-detail', ma_nhap=self.object.ma_nhap)
+        else:
+            self.object.delete()
+            return self.form_invalid(form)
 
     def form_invalid(self, form):
-        """
-        Nếu form không hợp lệ, render lại trang với các lỗi.
-        """
-        print("Lỗi trong form:", form.errors) #in ra lỗi của form
+        print("Lỗi trong form:", form.errors)
         return self.render_to_response(self.get_context_data(form=form))
-
-
 
     def get_success_url(self):
         return reverse_lazy('nhapkho-detail', kwargs={'ma_nhap': self.object.ma_nhap})
+
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponseForbidden
+
+# Hàm kiểm tra người dùng có thuộc nhóm "Quản lý kho"
+def is_quan_ly_kho(user):
+    return user.groups.filter(name='Quản lý kho').exists() or user.is_superuser
+
+
 # Cập nhật phiếu nhập kho
 class NhapKhoUpdateView(UpdateView):
     model = NhapKho
     form_class = NhapKhoForm
     template_name = 'cuoiky/nhapkho_form.html'
     pk_url_kwarg = 'ma_nhap'
-    success_url = reverse_lazy('nhapkho-list') # Chuyển hướng về danh sách sau khi cập nhật
+    success_url = reverse_lazy('nhapkho-list')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -399,33 +493,64 @@ class NhapKhoUpdateView(UpdateView):
             context['chitiet_formset'] = ChiTietNhapFormSet(self.request.POST, instance=self.object)
         else:
             context['chitiet_formset'] = ChiTietNhapFormSet(instance=self.object)
-        context['all_hanghoa'] = HangHoa.objects.all().values('ma_hang', 'ten_hang', 'don_vi_tinh')
+        # Đảm bảo truyền đầy đủ thông tin hàng hóa bao gồm đơn giá nhập
+        context['all_hanghoa'] = HangHoa.objects.all().values('ma_hang', 'ten_hang', 'don_vi_tinh', 'don_gia_nhap')
         return context
 
     def form_valid(self, form):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
 
-        with transaction.atomic():
-            self.object = form.save()
-            print("Phiếu nhập kho đã được cập nhật:", self.object)
+        # Kiểm tra tính hợp lệ của formset trước khi lưu
+        if not chitiet_formset.is_valid():
+            print("Lỗi trong chi tiết nhập kho:", chitiet_formset.errors)
+            for i, err in enumerate(chitiet_formset.errors):
+                if err:
+                    print(f"Form {i} errors:", err)
+            for err in chitiet_formset.non_form_errors():
+                print(f"Non-form error: {err}")
+            messages.error(self.request, "Có lỗi xảy ra khi lưu chi tiết nhập kho")
+            return self.form_invalid(form)
 
-            if chitiet_formset.is_valid():
+        with transaction.atomic():
+            try:
+                # Lưu phiếu nhập kho trước
+                self.object = form.save(commit=False)
+                self.object.tao_boi = self.request.user if self.request.user.is_authenticated else None
+                self.object.save()
+                print("Phiếu nhập kho đã được lưu:", self.object)
+
+                # Gán instance cho formset và lưu
                 chitiet_formset.instance = self.object
-                print("Instance của formset:", chitiet_formset.instance)
-                print("Dữ liệu của formset:", chitiet_formset.cleaned_data)
-                chitiet_formset.save()
-                print("Chi tiết nhập kho đã được cập nhật.")
+                saved_instances = chitiet_formset.save(commit=False)
+
+                # Lưu từng chi tiết nhập kho
+                for instance in saved_instances:
+                    # Đảm bảo don_gia_nhap không null
+                    if instance.don_gia_nhap is None:
+                        if instance.ma_hang and instance.ma_hang.don_gia_nhap:
+                            instance.don_gia_nhap = instance.ma_hang.don_gia_nhap
+                        else:
+                            instance.don_gia_nhap = 0
+
+                    # Tính thanh_tien
+                    instance.thanh_tien = (instance.don_gia_nhap * instance.so_luong_nhap) * (
+                                1 - instance.chiet_khau / 100)
+                    instance.save()
+                    print(f"Chi tiết nhập kho đã được lưu: {instance}")
+
+                # Lưu các quan hệ many-to-many nếu có
+                chitiet_formset.save_m2m()
 
                 # Cập nhật tổng tiền
                 self.object.tinh_lai_tong_tien()
-                self.object.save() # Lưu lại sau khi tính tổng tiền
-                print("Tổng tiền đã được cập nhật và lưu.")
+                print("Tổng tiền đã được cập nhật:", self.object.tong)
 
                 messages.success(self.request, f"Phiếu nhập kho {self.object.ma_nhap} đã được cập nhật thành công.")
                 return HttpResponseRedirect(self.get_success_url())
-            else:
-                print("Lỗi trong chi tiết nhập kho:", chitiet_formset.errors)
+            except Exception as e:
+                print(f"Lỗi khi lưu phiếu nhập kho: {e}")
+                messages.error(self.request, f"Có lỗi xảy ra khi lưu phiếu nhập kho: {e}")
                 return self.form_invalid(form)
 
     def form_invalid(self, form):
@@ -436,18 +561,28 @@ class NhapKhoUpdateView(UpdateView):
         return reverse_lazy('nhapkho-detail', kwargs={'ma_nhap': self.object.ma_nhap})
 
 
-
-
 # Duyệt phiếu nhập kho
+@login_required
 def duyet_nhapkho(request, ma_nhap):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
     nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
-    print(f"Duyệt phiếu nhập kho: {ma_nhap}") #in mã nhập kho
+    print(f"Duyệt phiếu nhập kho: {ma_nhap}")
 
     if nhapkho.tinh_trang == 'CHO_DUYET':
-        nhapkho.tinh_trang = 'DA_DUYET'
-        nhapkho.save()
-        print(f"Đã duyệt phiếu nhập kho {ma_nhap}")
-        messages.success(request, f"Phiếu nhập kho {ma_nhap} đã được duyệt.")
+        with transaction.atomic():
+            nhapkho.tinh_trang = 'DA_DUYET'
+            nhapkho.save()
+
+            #  Cập nhật tồn kho ngay tại đây
+            for chitiet in nhapkho.chi_tiet_nhap.all():
+                hanghoa = chitiet.ma_hang
+                hanghoa.so_luong_he_thong += chitiet.so_luong_nhap
+                hanghoa.save()
+                print(f"[+] Tăng {chitiet.so_luong_nhap} cho {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
+
+        messages.success(request, f"Phiếu nhập kho {ma_nhap} đã được duyệt và cập nhật tồn kho.")
     else:
         print(f"Không thể duyệt phiếu nhập kho {ma_nhap} vì trạng thái là {nhapkho.tinh_trang}")
         messages.error(request, "Chỉ có thể duyệt phiếu đang ở trạng thái chờ duyệt.")
@@ -455,32 +590,6 @@ def duyet_nhapkho(request, ma_nhap):
     return redirect('nhapkho-detail', ma_nhap=ma_nhap)
 
 
-# Nhập kho (hoàn thành phiếu nhập)
-def nhap_kho(request, ma_nhap):
-    nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
-    print(f"Nhập kho phiếu nhập kho: {ma_nhap}")
-
-    if nhapkho.tinh_trang == 'DA_DUYET':
-        with transaction.atomic():
-            nhapkho.tinh_trang = 'DA_NHAP'
-            nhapkho.save()
-            print(f"Đã chuyển trạng thái phiếu nhập kho {ma_nhap} thành DA_NHAP")
-
-            # TODO: Cập nhật số lượng hàng hóa vào bảng HangHoa
-            for chitiet in nhapkho.chi_tiet_nhap_set.all():
-                hanghoa = chitiet.ma_hang
-                print(f"Cập nhật số lượng hàng hóa cho: {hanghoa.ma_hang}")
-                print(f"Số lượng nhập: {chitiet.so_luong_nhap}")
-                hanghoa.so_luong_he_thong += chitiet.so_luong_nhap
-                hanghoa.save()
-                print(f"Số lượng mới của hàng hóa {hanghoa.ma_hang}: {hanghoa.so_luong_he_thong}")
-
-            messages.success(request, f"Phiếu nhập kho {ma_nhap} đã được nhập kho thành công.")
-    else:
-        print(f"Không thể nhập kho phiếu {ma_nhap} vì trạng thái là {nhapkho.tinh_trang}")
-        messages.error(request, "Chỉ có thể nhập kho phiếu đã được duyệt.")
-
-    return redirect('nhapkho-detail', ma_nhap=ma_nhap)
 
 
 # Từ chối phiếu nhập kho
@@ -573,10 +682,18 @@ def import_hanghoa_excel(request):
 def get_hanghoa_info(request, hanghoa_id):
     try:
         hang_hoa = HangHoa.objects.get(pk=hanghoa_id)
-        data = {'ma_hang': hang_hoa.ma_hang}
+        data = {
+            'ma_hang': hang_hoa.ma_hang,
+            'ten_hang': hang_hoa.ten_hang,
+            'don_gia_nhap': float(hang_hoa.don_gia_nhap) if hang_hoa.don_gia_nhap else 0,
+            'don_gia_ban': float(hang_hoa.don_gia_ban) if hang_hoa.don_gia_ban else 0,
+            'so_luong_he_thong': hang_hoa.so_luong_he_thong,
+            'don_vi_tinh': hang_hoa.don_vi_tinh
+        }
         return JsonResponse(data)
     except HangHoa.DoesNotExist:
         return JsonResponse({'error': 'Không tìm thấy hàng hóa'}, status=404)
+
 
 
 from django.shortcuts import render, redirect, get_object_or_404

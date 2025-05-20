@@ -137,6 +137,7 @@
 </head>
 <body>
 
+
     <nav class="sidebar">
         <div class="sidebar-sticky">
             {# *** LOGO VÀ TÊN THƯƠNG HIỆU (ĐÃ SỬA) *** #}
@@ -146,6 +147,7 @@
                 <img src="{% static 'images/logo.jpg' %}" alt="Xuân Trường Logo">
                 <h5 class="mb-0">Xuân Trường</h5> {# Bỏ mt-2 vì đã căn giữa bằng flexbox #}
             </a>
+
 
             {# Menu #}
             <ul class="nav flex-column">
@@ -217,11 +219,38 @@
              <div>
                  <button class="btn btn-sm border-0 me-1" title="Thông báo"><i class="fas fa-bell"></i></button>
                  <button class="btn btn-sm border-0 me-1" onclick="location.reload();" title="Tải lại trang"><i class="fas fa-sync-alt"></i></button>
-                 <button class="btn btn-sm border-0" title="Tài khoản"><i class="fas fa-user"></i></button>
+                 <button class="btn btn-sm border-0" title="Tài khoản" onclick="location.href='{% url 'profile' %}'"><i class="fas fa-user"></i></button>
              </div>
          </header>
 
          <main class="main-content">
+             {% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      <div class="alert
+                  {% if message.tags == 'success' %}alert-success
+                  {% elif message.tags == 'error' %}alert-danger
+                  {% elif message.tags == 'warning' %}alert-warning
+                  {% elif message.tags == 'info' %}alert-info
+                  {% else %}alert-secondary{% endif %}
+                  alert-dismissible fade show shadow-sm"
+           role="alert">
+        <i class="fas fa-info-circle me-1"></i> {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    setTimeout(function () {
+      document.querySelectorAll('.alert').forEach(function (alert) {
+        alert.classList.remove('show');
+        setTimeout(() => alert.remove(), 500);
+      });
+    }, 3000);
+  </script>
+{% endif %}
+
             {% block content %}
             <div class="alert alert-info">
                  Chào mừng bạn đến với hệ thống quản lý Vật liệu Xây dựng Xuân Trường!

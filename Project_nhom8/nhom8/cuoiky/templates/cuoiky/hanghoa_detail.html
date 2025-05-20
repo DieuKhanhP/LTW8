@@ -5,65 +5,125 @@
 {% block page_title %}Chi tiết Hàng hóa{% endblock %}
 
 {% block content %}
-<div class="card">
+<div class="card shadow rounded bg-light">
+    <h5 class="card-header bg-primary text-white">{{ hanghoa.ten_hang }}</h5>
     <div class="card-body">
-        <h5 class="card-title">{{ hanghoa.ten_hang }}</h5>
-        <p class="card-subtitle mb-3 text-muted">Mã hàng: {{ hanghoa.ma_hang }}</p>
-
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Tên hàng:</label>
-                    <input type="text" class="form-control-plaintext" readonly value="{{ hanghoa.ten_hang }}">
+                    <label class="form-label fw-bold text-primary">Mã hàng</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.ma_hang }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Mã hàng:</label>
-                    <input type="text" class="form-control-plaintext" readonly value="{{ hanghoa.ma_hang }}">
+                    <label class="form-label fw-bold text-primary">Tên hàng</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.ten_hang }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Nhóm hàng:</label>
-                    <input type="text" class="form-control-plaintext" readonly value="{{ hanghoa.nhom_hang }}">
+                    <label class="form-label fw-bold text-primary">Nhóm hàng</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.get_nhom_hang_display }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Đơn vị:</label>
-                    <input type="text" class="form-control-plaintext" readonly value="{{ hanghoa.don_vi_tinh }}">
+                    <label class="form-label fw-bold text-primary">Đơn vị tính</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.don_vi_tinh }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Đơn giá nhập</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.don_gia_nhap|floatformat:0 }}">
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Hạn sử dụng:</label>
-                    <input type="text" class="form-control-plaintext" readonly
-                           value="{% if hanghoa.han_su_dung %}{{ hanghoa.han_su_dung|date:"d/m/Y" }}{% else %}Không có{% endif %}">
+                    <label class="form-label fw-bold text-primary">Đơn giá bán</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.don_gia_ban|floatformat:0 }}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Số lượng tồn:</label>
-                    <input type="number" class="form-control-plaintext" readonly value="{{ hanghoa.so_luong_he_thong }}">
+                    <label class="form-label fw-bold text-primary">Hạn sử dụng</label>
+                    <input type="text" class="form-control bg-white" readonly
+                           value="{% if hanghoa.han_su_dung %}{{ hanghoa.han_su_dung|date:'d/m/Y' }}{% else %}Không có{% endif %}">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Trạng thái:</label>
-                    <input type="text" class="form-control-plaintext" readonly value="{{ hanghoa.get_tinh_trang_display }}">
+                    <label class="form-label fw-bold text-primary">Số lượng tồn</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.so_luong_he_thong }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Giới hạn dưới</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.gioi_han_duoi|default:'Chưa thiết lập' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Tình trạng</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.get_tinh_trang_display }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Mã vạch</label>
+                    <input type="text" class="form-control bg-white" readonly value="{{ hanghoa.qr_code|default:'Chưa có mã vạch' }}">
                 </div>
             </div>
         </div>
 
         <div class="mb-3">
-            <label class="form-label fw-bold">Hình ảnh:</label>
-            {% if hanghoa.url_image %}
-                <img src="{{ hanghoa.url_image.url }}" alt="{{ hanghoa.ten_hang }}" class="img-fluid rounded" style="max-height: 200px;">
-            {% else %}
-                <p>Không có hình ảnh.</p>
-            {% endif %}
+            <label class="form-label fw-bold text-primary">Mô tả</label>
+            <textarea class="form-control bg-white" readonly rows="3">{{ hanghoa.mo_ta|default:"Không có mô tả." }}</textarea>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label fw-bold">Mô tả hàng hóa:</label>
-            <textarea class="form-control-plaintext" readonly rows="4">{{ hanghoa.mo_ta|default:"Không có mô tả." }}</textarea>
+        <div class="mb-4">
+            <label class="form-label fw-bold text-primary">Ảnh sản phẩm</label>
+            <div>
+                {% if hanghoa.url_image %}
+                    <img src="{{ hanghoa.url_image.url }}" alt="{{ hanghoa.ten_hang }}" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
+                {% else %}
+                    <p class="text-muted">Không có hình ảnh.</p>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="mt-4">
-            <a href="" class="btn btn-warning btn-sm">Sửa</a>
-            <a href="{% url 'hanghoa-list' %}" class="btn btn-secondary btn-sm">Quay lại danh sách</a>
+        <div class="mt-4 d-flex gap-2">
+            <a href="{% url 'hanghoa-update' hanghoa.ma_hang %}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i>Sửa
+            </a>
+            <a href="{% url 'hanghoa-list' %}" class="btn btn-primary">
+                <i class="fas fa-list me-1"></i>Quay lại danh sách
+            </a>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fas fa-trash-alt me-1"></i>Xóa
+            </button>
         </div>
     </div>
 </div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa hàng hóa <strong>{{ hanghoa.ten_hang }}</strong> không?</p>
+                <p class="text-danger"><small>Lưu ý: Hành động này không thể hoàn tác.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form method="post" action="{% url 'hanghoa-delete' hanghoa.ma_hang %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Xác nhận xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-label {
+        font-weight: 600;
+    }
+    .btn i {
+        margin-right: 5px;
+    }
+</style>
 {% endblock %}
