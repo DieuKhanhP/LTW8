@@ -2,12 +2,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
 from django.contrib import messages
-from .models import HangHoa # Import model HangHoa của bạn
+from .models import HangHoa  # Import model HangHoa của bạn
 from django.urls import reverse_lazy
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group
 
-
-from django.db.models import Q # Để dùng OR trong query
+from django.db.models import Q  # Để dùng OR trong query
 
 # Giả sử TINH_TRANG_TONKHO_CHOICES được định nghĩa ở đây hoặc import từ models
 # TINH_TRANG_TONKHO_CHOICES = [ ('CON_HANG', 'Còn hàng'), ('HET_HANG', 'Hết hàng'), ...]
@@ -18,6 +17,14 @@ from django.utils import timezone
 from .models import HangHoa, NhapKho, XuatKho, KiemKe  # Import các model của bạn
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+def is_warehouse_manager(user):
+    return user.groups.filter(name='Quản lý kho').exists() or user.is_superuser
+
+
 
 def login_view(request):
     if request.method == 'POST':
@@ -31,40 +38,76 @@ def login_view(request):
             return render(request, 'login.html', {'error': 'Tên đăng nhập hoặc mật khẩu không đúng.'})
     return render(request, 'login.html')
 
+
 from .forms import ProfileForm
+from .models import CustomUser
+
+
 @login_required
-def profile_view(request):
+def profile_view(request, username=None):
     """Hiển thị và cập nhật thông tin profile của người dùng."""
 
+    # Nếu có username và người dùng hiện tại là quản lý kho, hiển thị profile của nhân viên đó
+    if username and is_warehouse_manager(request.user):
+        viewed_user = get_object_or_404(User, username=username)
+    else:
+        viewed_user = request.user
+
     if request.method == 'POST':
-        profile_form = ProfileForm(request.POST, instance=request.user)
+        # Chỉ cho phép cập nhật nếu đang xem profile của chính mình
+        if viewed_user.username != request.user.username and not is_warehouse_manager(request.user):
+            messages.error(request, 'Bạn không có quyền cập nhật thông tin của người dùng khác.')
+            return redirect('profile')
+
+        profile_form = ProfileForm(request.POST, instance=viewed_user)
 
         if profile_form.is_valid():
             user = profile_form.save(commit=False)
             # Đảm bảo lưu trường phone
             user.phone = profile_form.cleaned_data.get('phone', '')
+            # Đảm bảo lưu trường position
+            user.position = profile_form.cleaned_data.get('position', '')
             user.save()
 
             messages.success(request, 'Thông tin cá nhân đã được cập nhật thành công!')
-            return redirect('profile')
+            if username and is_warehouse_manager(request.user):
+                return redirect('profile_detail', username=username)
+            else:
+                return redirect('profile')
         else:
             messages.error(request, 'Có lỗi xảy ra khi cập nhật thông tin. Vui lòng kiểm tra lại.')
     else:
-        profile_form = ProfileForm(instance=request.user)
+        profile_form = ProfileForm(instance=viewed_user)
+
+    # Lấy danh sách nhân viên kho nếu người dùng là quản lý kho
+    warehouse_staff = None
+    if is_warehouse_manager(request.user):
+        warehouse_staff_group = Group.objects.filter(name='Nhân viên kho').first()
+        if warehouse_staff_group:
+            warehouse_staff = User.objects.filter(groups=warehouse_staff_group)
+        else:
+            # Nếu không có nhóm "Nhân viên kho", lấy tất cả người dùng trừ quản lý và admin
+            manager_group = Group.objects.filter(name='Quản lý kho').first()
+            if manager_group:
+                warehouse_staff = User.objects.exclude(groups=manager_group).exclude(is_superuser=True)
+            else:
+                warehouse_staff = User.objects.exclude(is_superuser=True)
 
     context = {
         'profile_form': profile_form,
+        'viewed_user': viewed_user,
+        'is_manager': is_warehouse_manager(request.user),
+        'warehouse_staff': warehouse_staff,
+        'viewing_self': viewed_user.username == request.user.username
     }
 
     return render(request, 'profile.html', context)
-
 @login_required
 def dashboard_view(request):
     """
     View này xử lý logic để lấy dữ liệu thống kê từ các model và truyền vào template.
     """
     now = timezone.now()
-
 
     # Tính toán tổng số lượng nhập và xuất (đã duyệt)
     total_import = NhapKho.objects.filter(tinh_trang='DA_NHAP').count()
@@ -78,12 +121,16 @@ def dashboard_view(request):
 
     # Thống kê nhập kho trong tháng
     phieu_nhap_thang_count = NhapKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year).count()
-    gia_tri_nhap_thang = NhapKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_NHAP').aggregate(Sum('tong'))['tong__sum'] or 0
+    gia_tri_nhap_thang = \
+    NhapKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_NHAP').aggregate(
+        Sum('tong'))['tong__sum'] or 0
     phieu_nhap_cho_duyet_count = NhapKho.objects.filter(tinh_trang='CHO_DUYET').count()
 
     # Thống kê xuất kho trong tháng
     phieu_xuat_thang_count = XuatKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year).count()
-    gia_tri_xuat_thang = XuatKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0
+    gia_tri_xuat_thang = \
+    XuatKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_DUYET').aggregate(
+        Sum('tong'))['tong__sum'] or 0
     phieu_xuat_cho_duyet_count = XuatKho.objects.filter(tinh_trang='CHO_DUYET').count()
 
     # Thống kê kiểm kê trong tháng
@@ -117,8 +164,6 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-
-
 
 from django.http import JsonResponse
 from django.contrib import messages
@@ -168,11 +213,13 @@ def hanghoa_delete(request, ma_hang):
             'success': False,
             'error': f'Lỗi khi xóa hàng hóa: {str(e)}'
         }, status=500)
+
+
 class HangHoaListView(generic.ListView):
     model = HangHoa
-    template_name = 'cuoiky/hanghoa_list.html' # Đổi tên template
-    context_object_name = 'hanghoa_list'          # Đổi tên biến context
-    paginate_by = 10 # Hoặc số lượng bạn muốn
+    template_name = 'cuoiky/hanghoa_list.html'  # Đổi tên template
+    context_object_name = 'hanghoa_list'  # Đổi tên biến context
+    paginate_by = 10  # Hoặc số lượng bạn muốn
 
     def get_queryset(self):
         queryset = super().get_queryset().order_by('-ma_hang')
@@ -203,8 +250,9 @@ class HangHoaListView(generic.ListView):
         if 'page' in search_params:
             del search_params['page']
         context['search_params'] = search_params.urlencode()
-        context['request'] = self.request # Truyền request vào context để lấy GET params trong template
+        context['request'] = self.request  # Truyền request vào context để lấy GET params trong template
         return context
+
 
 from .forms import HangHoaForm
 
@@ -269,7 +317,7 @@ class HangHoaUpdateView(generic.UpdateView):
 # Bạn có thể thêm View xem chi tiết nếu cần
 class HangHoaDetailView(generic.DetailView):
     model = HangHoa
-    template_name = 'cuoiky/hanghoa_detail.html' # Tạo template này nếu cần
+    template_name = 'cuoiky/hanghoa_detail.html'  # Tạo template này nếu cần
     pk_url_kwarg = 'ma_hang'
     context_object_name = 'hanghoa'
 
@@ -305,6 +353,7 @@ import openpyxl
 from .models import NhapKho, ChiTietNhap, HangHoa
 from .forms import NhapKhoForm, ChiTietNhapForm
 
+
 # Thay đổi view xóa phiếu nhập kho
 def xoa_nhapkho(request, ma_nhap):
     nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
@@ -320,7 +369,8 @@ def xoa_nhapkho(request, ma_nhap):
                     hanghoa = chitiet.ma_hang
                     hanghoa.so_luong_he_thong -= chitiet.so_luong_nhap
                     hanghoa.save()
-                    print(f"[-] Trừ {chitiet.so_luong_nhap} khỏi {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
+                    print(
+                        f"[-] Trừ {chitiet.so_luong_nhap} khỏi {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
 
             #  Xóa chi tiết trước, rồi xóa phiếu
             nhapkho.chi_tiet_nhap.all().delete()
@@ -439,29 +489,99 @@ class NhapKhoCreateView(CreateView):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
 
-        self.object = form.save(commit=False)
-        self.object.tao_boi = self.request.user if self.request.user.is_authenticated else None
-        self.object.save()
+        # Lưu phiếu nhập kho trước
+        with transaction.atomic():
+            try:
+                # Lưu phiếu nhập kho
+                self.object = form.save(commit=False)
+                self.object.tao_boi = self.request.user if self.request.user.is_authenticated else None
+                self.object.save()
+                print(f"Đã lưu phiếu nhập kho: {self.object.ma_nhap}")
 
-        chitiet_formset.instance = self.object
+                # Kiểm tra xem có ít nhất một chi tiết hợp lệ không
+                has_valid_details = False
+                valid_forms = []
 
-        if chitiet_formset.is_valid():  # Bắt buộc gọi trước!
-            has_valid_details = any(
-                f.cleaned_data and not f.cleaned_data.get('DELETE', False) and f.cleaned_data.get('ma_hang')
-                for f in chitiet_formset.forms
-            )
-            if not has_valid_details:
-                messages.error(self.request, "Vui lòng thêm ít nhất một hàng hóa vào phiếu nhập kho.")
-                self.object.delete()
+                # In ra dữ liệu POST để kiểm tra
+                print("POST data:", self.request.POST)
+
+                # Kiểm tra tính hợp lệ của formset
+                if not chitiet_formset.is_valid():
+                    print("Formset không hợp lệ:", chitiet_formset.errors)
+                    for i, form_errors in enumerate(chitiet_formset.errors):
+                        print(f"Form {i} errors:", form_errors)
+                    if chitiet_formset.non_form_errors():
+                        print("Non-form errors:", chitiet_formset.non_form_errors())
+                    messages.error(self.request, "Có lỗi xảy ra khi xác thực chi tiết nhập kho")
+                    return self.form_invalid(form)
+
+                # Xử lý từng form trong formset
+                for i, detail_form in enumerate(chitiet_formset.forms):
+                    print(f"Xử lý form {i}:")
+                    print(f"  Form is valid: {detail_form.is_valid()}")
+                    print(f"  Form has changed: {detail_form.has_changed()}")
+                    print(f"  Form changed data: {detail_form.changed_data}")
+
+                    # Chỉ xử lý các form hợp lệ, có dữ liệu và không bị đánh dấu xóa
+                    if detail_form.is_valid() and detail_form.has_changed():
+                        if not detail_form.cleaned_data.get('DELETE', False):
+                            if detail_form.cleaned_data.get('ma_hang'):
+                                has_valid_details = True
+                                valid_forms.append(detail_form)
+                                print(f"  Form {i} hợp lệ và sẽ được lưu")
+                            else:
+                                print(f"  Form {i} không có mã hàng")
+                        else:
+                            print(f"  Form {i} bị đánh dấu xóa")
+                    else:
+                        print(f"  Form {i} không hợp lệ hoặc không có thay đổi")
+
+                if not has_valid_details:
+                    messages.error(self.request, "Vui lòng thêm ít nhất một hàng hóa vào phiếu nhập kho.")
+                    # Xóa phiếu nhập kho đã tạo vì không có chi tiết hợp lệ
+                    self.object.delete()
+                    return self.form_invalid(form)
+
+                # Lưu từng chi tiết nhập kho riêng biệt
+                for detail_form in valid_forms:
+                    try:
+                        chitiet = detail_form.save(commit=False)
+                        chitiet.ma_nhap = self.object
+
+                        # Đảm bảo các trường không bị null
+                        if chitiet.don_gia_nhap is None:
+                            if chitiet.ma_hang and chitiet.ma_hang.don_gia_nhap:
+                                chitiet.don_gia_nhap = chitiet.ma_hang.don_gia_nhap
+                            else:
+                                chitiet.don_gia_nhap = 0
+
+                        if chitiet.chiet_khau is None:
+                            chitiet.chiet_khau = 0
+
+                        # Tính thanh tiền
+                        chitiet.thanh_tien = (chitiet.don_gia_nhap * chitiet.so_luong_nhap) * (
+                                1 - chitiet.chiet_khau / 100)
+
+                        # Lưu chi tiết
+                        chitiet.save()
+                        print(f"Đã lưu chi tiết nhập kho: {chitiet}")
+                    except Exception as e:
+                        print(f"Lỗi khi lưu chi tiết: {e}")
+                        import traceback
+                        traceback.print_exc()
+
+                # Cập nhật tổng tiền
+                self.object.tinh_lai_tong_tien()
+                print(f"Đã cập nhật tổng tiền: {self.object.tong}")
+
+                messages.success(self.request, "Tạo phiếu nhập kho thành công!")
+                return redirect('nhapkho-detail', ma_nhap=self.object.ma_nhap)
+            except Exception as e:
+                print(f"Lỗi khi lưu phiếu nhập kho: {e}")
+                import traceback
+                traceback.print_exc()
+                messages.error(self.request, f"Có lỗi xảy ra khi lưu phiếu nhập kho: {e}")
                 return self.form_invalid(form)
-
-            chitiet_formset.save()
-            self.object.tinh_lai_tong_tien()
-            messages.success(self.request, "Tạo phiếu nhập kho thành công!")
-            return redirect('nhapkho-detail', ma_nhap=self.object.ma_nhap)
-        else:
-            self.object.delete()
-            return self.form_invalid(form)
 
     def form_invalid(self, form):
         print("Lỗi trong form:", form.errors)
@@ -470,8 +590,10 @@ class NhapKhoCreateView(CreateView):
     def get_success_url(self):
         return reverse_lazy('nhapkho-detail', kwargs={'ma_nhap': self.object.ma_nhap})
 
+
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponseForbidden
+
 
 # Hàm kiểm tra người dùng có thuộc nhóm "Quản lý kho"
 def is_quan_ly_kho(user):
@@ -535,7 +657,7 @@ class NhapKhoUpdateView(UpdateView):
 
                     # Tính thanh_tien
                     instance.thanh_tien = (instance.don_gia_nhap * instance.so_luong_nhap) * (
-                                1 - instance.chiet_khau / 100)
+                            1 - instance.chiet_khau / 100)
                     instance.save()
                     print(f"Chi tiết nhập kho đã được lưu: {instance}")
 
@@ -561,35 +683,84 @@ class NhapKhoUpdateView(UpdateView):
         return reverse_lazy('nhapkho-detail', kwargs={'ma_nhap': self.object.ma_nhap})
 
 
+from .models import TonKhoTheoKho, Kho
 # Duyệt phiếu nhập kho
+from django.db.models import Sum
+from .models import NhapKho, TonKhoTheoKho, Kho
+
+
 @login_required
 def duyet_nhapkho(request, ma_nhap):
     if not is_quan_ly_kho(request.user):
         messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
         return redirect('nhapkho-detail', ma_nhap=ma_nhap)
+
     nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
-    print(f"Duyệt phiếu nhập kho: {ma_nhap}")
 
-    if nhapkho.tinh_trang == 'CHO_DUYET':
-        with transaction.atomic():
-            nhapkho.tinh_trang = 'DA_DUYET'
-            nhapkho.save()
-
-            #  Cập nhật tồn kho ngay tại đây
-            for chitiet in nhapkho.chi_tiet_nhap.all():
-                hanghoa = chitiet.ma_hang
-                hanghoa.so_luong_he_thong += chitiet.so_luong_nhap
-                hanghoa.save()
-                print(f"[+] Tăng {chitiet.so_luong_nhap} cho {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
-
-        messages.success(request, f"Phiếu nhập kho {ma_nhap} đã được duyệt và cập nhật tồn kho.")
-    else:
-        print(f"Không thể duyệt phiếu nhập kho {ma_nhap} vì trạng thái là {nhapkho.tinh_trang}")
+    if nhapkho.tinh_trang != 'CHO_DUYET':
         messages.error(request, "Chỉ có thể duyệt phiếu đang ở trạng thái chờ duyệt.")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
 
+    kho_chinh = nhapkho.kho
+    kho_du_phong = Kho.objects.get(ma_kho='KHO0002')  # Kho dự trữ
+
+    ton_chinh = TonKhoTheoKho.objects.filter(kho=kho_chinh).aggregate(tong=Sum('so_luong'))['tong'] or 0
+    ton_phu = TonKhoTheoKho.objects.filter(kho=kho_du_phong).aggregate(tong=Sum('so_luong'))['tong'] or 0
+
+    gioi_han_chinh = kho_chinh.gioi_han
+    gioi_han_phu = kho_du_phong.gioi_han
+
+    cho_phep_chinh = gioi_han_chinh - ton_chinh
+    cho_phep_phu = gioi_han_phu - ton_phu
+    tong_cho_phep = cho_phep_chinh + cho_phep_phu
+
+    tong_nhap = sum(ct.so_luong_nhap for ct in nhapkho.chi_tiet_nhap.all())
+
+    if tong_nhap > tong_cho_phep:
+        messages.error(request,
+                       f"Không thể duyệt. Tổng hàng ({tong_nhap}) vượt quá khả năng chứa của cả hai kho ({tong_cho_phep}).")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
+
+    with transaction.atomic():
+        nhapkho.tinh_trang = 'DA_DUYET'
+        nhapkho.save()
+
+        for chitiet in nhapkho.chi_tiet_nhap.all():
+            hh = chitiet.ma_hang
+            so_luong_can_nhap = chitiet.so_luong_nhap
+
+            # Nhập vào kho chính trước
+            nhap_chinh = min(so_luong_can_nhap, cho_phep_chinh)
+            if nhap_chinh > 0:
+                ton_kho_chinh, _ = TonKhoTheoKho.objects.get_or_create(
+                    kho=kho_chinh,
+                    hang_hoa=hh,
+                    defaults={'so_luong': 0}
+                )
+                ton_kho_chinh.so_luong += nhap_chinh
+                ton_kho_chinh.save()
+                hh.so_luong_he_thong += nhap_chinh
+                hh.save()
+                cho_phep_chinh -= nhap_chinh
+
+            # Nhập phần dư vào kho phụ
+            con_lai = so_luong_can_nhap - nhap_chinh
+            if con_lai > 0:
+                nhap_phu = min(con_lai, cho_phep_phu)
+                if nhap_phu > 0:
+                    ton_kho_phu, _ = TonKhoTheoKho.objects.get_or_create(
+                        kho=kho_du_phong,
+                        hang_hoa=hh,
+                        defaults={'so_luong': 0}
+                    )
+                    ton_kho_phu.so_luong += nhap_phu
+                    ton_kho_phu.save()
+                    hh.so_luong_he_thong += nhap_phu
+                    hh.save()
+                    cho_phep_phu -= nhap_phu
+
+    messages.success(request, f"Phiếu nhập kho {ma_nhap} đã được duyệt và cập nhật tồn kho.")
     return redirect('nhapkho-detail', ma_nhap=ma_nhap)
-
-
 
 
 # Từ chối phiếu nhập kho
@@ -609,7 +780,6 @@ def tu_choi_nhapkho(request, ma_nhap):
     return redirect('nhapkho-detail', ma_nhap=ma_nhap)
 
 
-
 def import_hanghoa_excel(request):
     if request.method == 'POST' and request.FILES.get('excel_file'):
         excel_file = request.FILES['excel_file']
@@ -622,11 +792,13 @@ def import_hanghoa_excel(request):
 
             # Giả định dòng đầu tiên là header
             header = [cell.value for cell in sheet[1]]
-            expected_headers = ['ma_hang', 'ten_hang', 'nhom_hang', 'don_vi_tinh', 'so_luong_he_thong', 'han_su_dung', 'mo_ta', 'tinh_trang', 'url_image']
+            expected_headers = ['ma_hang', 'ten_hang', 'nhom_hang', 'don_vi_tinh', 'so_luong_he_thong', 'han_su_dung',
+                                'mo_ta', 'tinh_trang', 'url_image']
 
             if header != expected_headers:
-                messages.error(request, f"Cấu trúc file Excel không đúng. Mong đợi các cột: {', '.join(expected_headers)}")
-                return redirect('nhapkho-create') # Hoặc trang nào bạn muốn
+                messages.error(request,
+                               f"Cấu trúc file Excel không đúng. Mong đợi các cột: {', '.join(expected_headers)}")
+                return redirect('nhapkho-create')  # Hoặc trang nào bạn muốn
 
             for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
                 row_data = dict(zip(header, row))
@@ -647,8 +819,8 @@ def import_hanghoa_excel(request):
                             'so_luong_he_thong': row_data.get('so_luong_he_thong', 0),
                             'han_su_dung': row_data.get('han_su_dung'),
                             'mo_ta': row_data.get('mo_ta', ''),
-                            'tinh_trang': row_data.get('tinh_trang', True), # Giả định True nếu không có
-                            'url_image': row_data.get('url_image', '') # Cần xử lý file nếu có
+                            'tinh_trang': row_data.get('tinh_trang', True),  # Giả định True nếu không có
+                            'url_image': row_data.get('url_image', '')  # Cần xử lý file nếu có
                         }
                     )
                     if created:
@@ -665,10 +837,10 @@ def import_hanghoa_excel(request):
             if created_count > 0:
                 messages.success(request, f"Đã thêm mới {created_count} hàng hóa từ Excel.")
             if updated_count > 0:
-                messages.info(request, f"Đã cập nhật {updated_count} hàng hóa từ Excel.") # changed to info
+                messages.info(request, f"Đã cập nhật {updated_count} hàng hóa từ Excel.")  # changed to info
             if errors:
                 messages.error(request, "Có lỗi xảy ra trong quá trình nhập liệu từ Excel:")
-                for error_message in errors: # changed variable name to avoid shadowing
+                for error_message in errors:  # changed variable name to avoid shadowing
                     messages.error(request, error_message)
 
         except Exception as e:
@@ -676,7 +848,7 @@ def import_hanghoa_excel(request):
             messages.error(request, error_message)
             print(error_message)
 
-    return redirect('nhapkho-create') # Chuyển hướng về trang tạo phiếu nhập kho
+    return redirect('nhapkho-create')  # Chuyển hướng về trang tạo phiếu nhập kho
 
 
 def get_hanghoa_info(request, hanghoa_id):
@@ -695,7 +867,6 @@ def get_hanghoa_info(request, hanghoa_id):
         return JsonResponse({'error': 'Không tìm thấy hàng hóa'}, status=404)
 
 
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
@@ -709,12 +880,12 @@ from django.db.models import Q
 from .models import XuatKho, ChiTietXuat, HangHoa
 from .forms import XuatKhoForm, ChiTietXuatFormSet
 
-
 # Xóa phiếu xuất kho
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.db import transaction
 from .models import XuatKho
+
 
 def xoa_xuatkho(request, ma_xuat):
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
@@ -805,8 +976,25 @@ class XuatKhoCreateView(CreateView):
     form_class = XuatKhoForm
     template_name = 'cuoiky/xuatkho_form.html'
 
+    def get_initial(self):
+        initial = super().get_initial()
+        # Tạo mã xuất kho tự động khi mở form
+        prefix = 'XK'
+        last_xuat = XuatKho.objects.order_by('-ma_xuat').first()
+        if last_xuat and last_xuat.ma_xuat.startswith(prefix):
+            try:
+                last_number = int(last_xuat.ma_xuat.replace(prefix, ''))
+                new_number = last_number + 1
+            except ValueError:
+                new_number = 1
+        else:
+            new_number = 1
+        initial['ma_xuat'] = f"{prefix}{new_number:04d}"
+        return initial
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['page_title'] = 'THÊM MỚI PHIẾU XUẤT KHO'
         if self.request.POST:
             context['chitiet_formset'] = ChiTietXuatFormSet(self.request.POST)
         else:
@@ -818,42 +1006,93 @@ class XuatKhoCreateView(CreateView):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
 
-
         with transaction.atomic():
-            # Tự động tạo mã phiếu nếu không có
-            if not form.instance.ma_xuat:
-                today = timezone.now()
-                prefix = f"XK{today.strftime('%y%m%d')}"
-                last_receipt = XuatKho.objects.filter(ma_xuat__startswith=prefix).order_by('-ma_xuat').first()
+            try:
+                # Lưu phiếu xuất kho
+                self.object = form.save(commit=False)
+                self.object.tao_boi = self.request.user if self.request.user.is_authenticated else None
+                self.object.save()
+                print(f"Đã lưu phiếu xuất kho: {self.object.ma_xuat}")
 
-                if last_receipt:
+                # Kiểm tra xem có ít nhất một chi tiết hợp lệ không
+                has_valid_details = False
+                valid_forms = []
+
+                # Kiểm tra tính hợp lệ của formset
+                if not chitiet_formset.is_valid():
+                    print("Formset không hợp lệ:", chitiet_formset.errors)
+                    for i, form_errors in enumerate(chitiet_formset.errors):
+                        print(f"Form {i} errors:", form_errors)
+                    if chitiet_formset.non_form_errors():
+                        print("Non-form errors:", chitiet_formset.non_form_errors())
+                    messages.error(self.request, "Có lỗi xảy ra khi xác thực chi tiết xuất kho")
+                    return self.form_invalid(form)
+
+                # Xử lý từng form trong formset
+                for i, detail_form in enumerate(chitiet_formset.forms):
+                    # Chỉ xử lý các form hợp lệ, có dữ liệu và không bị đánh dấu xóa
+                    if detail_form.is_valid() and detail_form.has_changed():
+                        if not detail_form.cleaned_data.get('DELETE', False):
+                            if detail_form.cleaned_data.get('ma_hang'):
+                                has_valid_details = True
+                                valid_forms.append(detail_form)
+                            else:
+                                print(f"Form {i} không có mã hàng")
+                        else:
+                            print(f"Form {i} bị đánh dấu xóa")
+                    else:
+                        print(f"Form {i} không hợp lệ hoặc không có thay đổi")
+
+                if not has_valid_details:
+                    messages.error(self.request, "Vui lòng thêm ít nhất một hàng hóa vào phiếu xuất kho.")
+                    # Xóa phiếu xuất kho đã tạo vì không có chi tiết hợp lệ
+                    self.object.delete()
+                    return self.form_invalid(form)
+
+                # Lưu từng chi tiết xuất kho riêng biệt
+                for detail_form in valid_forms:
                     try:
-                        last_num = int(last_receipt.ma_xuat[8:])
-                        new_num = last_num + 1
-                    except ValueError:
-                        new_num = 1
-                else:
-                    new_num = 1
+                        chitiet = detail_form.save(commit=False)
+                        chitiet.ma_xuat = self.object
 
-                form.instance.ma_xuat = f"{prefix}{new_num:03d}"
+                        # Đảm bảo các trường không bị null
+                        if chitiet.don_gia_xuat is None:
+                            if chitiet.ma_hang and chitiet.ma_hang.don_gia_ban:
+                                chitiet.don_gia_xuat = chitiet.ma_hang.don_gia_ban
+                            else:
+                                chitiet.don_gia_xuat = 0
 
-            # Lưu người tạo
-            form.instance.tao_boi = self.request.user if self.request.user.is_authenticated else None
-            return super().form_valid(form)
+                        if chitiet.chiet_khau is None:
+                            chitiet.chiet_khau = 0
 
-            self.object = form.save()
+                        # Tính thanh tiền
+                        chitiet.thanh_tien = (chitiet.don_gia_xuat * chitiet.so_luong_xuat) * (
+                                    1 - chitiet.chiet_khau / 100)
 
-            if chitiet_formset.is_valid():
-                chitiet_formset.instance = self.object
-                chitiet_formset.save()
+                        # Lưu chi tiết
+                        chitiet.save()
+                        print(f"Đã lưu chi tiết xuất kho: {chitiet}")
+                    except Exception as e:
+                        print(f"Lỗi khi lưu chi tiết: {e}")
+                        import traceback
+                        traceback.print_exc()
 
                 # Cập nhật tổng tiền
                 self.object.tinh_lai_tong_tien()
+                print(f"Đã cập nhật tổng tiền: {self.object.tong}")
 
-                messages.success(self.request, f"Phiếu xuất kho {self.object.ma_xuat} đã được tạo thành công.")
-                return HttpResponseRedirect(self.get_success_url())
-            else:
+                messages.success(self.request, "Tạo phiếu xuất kho thành công!")
+                return redirect('xuatkho-detail', ma_xuat=self.object.ma_xuat)
+            except Exception as e:
+                print(f"Lỗi khi lưu phiếu xuất kho: {e}")
+                import traceback
+                traceback.print_exc()
+                messages.error(self.request, f"Có lỗi xảy ra khi lưu phiếu xuất kho: {e}")
                 return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        print("Lỗi trong form:", form.errors)
+        return self.render_to_response(self.get_context_data(form=form))
 
     def get_success_url(self):
         return reverse_lazy('xuatkho-detail', kwargs={'ma_xuat': self.object.ma_xuat})
@@ -905,12 +1144,86 @@ class XuatKhoUpdateView(UpdateView):
 def duyet_xuatkho(request, ma_xuat):
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
-    if xuatkho.tinh_trang == 'CHO_DUYET':
+    if xuatkho.tinh_trang != 'CHO_DUYET':
+        messages.error(request, "Chỉ có thể duyệt phiếu đang ở trạng thái chờ duyệt.")
+        return redirect('xuatkho-detail', ma_xuat=ma_xuat)
+
+    # Kiểm tra tồn kho trước khi duyệt
+    du_ton_kho = True
+    thieu_hang = []
+
+    with transaction.atomic():
+        for chitiet in xuatkho.chi_tiet_xuat.all():
+            hang_hoa = chitiet.ma_hang
+            so_luong_xuat = chitiet.so_luong_xuat
+
+            # Kiểm tra tồn kho
+            if hang_hoa.so_luong_he_thong < so_luong_xuat:
+                du_ton_kho = False
+                thieu_hang.append({
+                    'ten_hang': hang_hoa.ten_hang,
+                    'ma_hang': hang_hoa.ma_hang,
+                    'ton_kho': hang_hoa.so_luong_he_thong,
+                    'can_xuat': so_luong_xuat
+                })
+
+        if not du_ton_kho:
+            error_message = "Không đủ tồn kho để xuất các mặt hàng sau: "
+            for hang in thieu_hang:
+                error_message += f"\n- {hang['ten_hang']} (Mã: {hang['ma_hang']}): Tồn kho {hang['ton_kho']}, Cần xuất {hang['can_xuat']}"
+            messages.error(request, error_message)
+            return redirect('xuatkho-detail', ma_xuat=ma_xuat)
+
+        # Nếu đủ tồn kho, tiến hành duyệt phiếu và giảm tồn kho
         xuatkho.tinh_trang = 'DA_DUYET'
         xuatkho.save()
-        messages.success(request, f"Phiếu xuất kho {ma_xuat} đã được duyệt.")
-    else:
-        messages.error(request, "Chỉ có thể duyệt phiếu đang ở trạng thái chờ duyệt.")
+
+        # Giảm tồn kho trong hệ thống và trong từng kho
+        for chitiet in xuatkho.chi_tiet_xuat.all():
+            hang_hoa = chitiet.ma_hang
+            so_luong_xuat = chitiet.so_luong_xuat
+            kho = xuatkho.kho
+
+            # Giảm tồn kho trong hệ thống
+            hang_hoa.so_luong_he_thong -= so_luong_xuat
+            hang_hoa.save()
+
+            # Giảm tồn kho trong kho cụ thể
+            ton_kho_theo_kho, created = TonKhoTheoKho.objects.get_or_create(
+                hang_hoa=hang_hoa,
+                kho=kho,
+                defaults={'so_luong': 0}
+            )
+
+            if ton_kho_theo_kho.so_luong < so_luong_xuat:
+                # Nếu kho này không đủ, tìm kho khác để lấy hàng
+                con_thieu = so_luong_xuat - ton_kho_theo_kho.so_luong
+                ton_kho_theo_kho.so_luong = 0
+                ton_kho_theo_kho.save()
+
+                # Tìm các kho khác có hàng
+                cac_kho_khac = TonKhoTheoKho.objects.filter(
+                    hang_hoa=hang_hoa,
+                    so_luong__gt=0
+                ).exclude(kho=kho).order_by('kho__loai_kho')
+
+                for ton_kho_khac in cac_kho_khac:
+                    if con_thieu <= 0:
+                        break
+
+                    if ton_kho_khac.so_luong >= con_thieu:
+                        ton_kho_khac.so_luong -= con_thieu
+                        ton_kho_khac.save()
+                        con_thieu = 0
+                    else:
+                        con_thieu -= ton_kho_khac.so_luong
+                        ton_kho_khac.so_luong = 0
+                        ton_kho_khac.save()
+            else:
+                ton_kho_theo_kho.so_luong -= so_luong_xuat
+                ton_kho_theo_kho.save()
+
+        messages.success(request, f"Phiếu xuất kho {ma_xuat} đã được duyệt và đã giảm hàng tồn kho.")
 
     return redirect('xuatkho-detail', ma_xuat=ma_xuat)
 
@@ -947,23 +1260,28 @@ def tu_choi_xuatkho(request, ma_xuat):
     return redirect('xuatkho-detail', ma_xuat=ma_xuat)
 
 
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
-from .models import KiemKe, HangHoa
+from .models import KiemKe, HangHoa, ChiTietKiemKe
 from .forms import KiemKeForm, ChiTietKiemKeFormSet, ChiTietKiemKeFormSetUpdate
 
+
+@login_required
 def kiemke_list(request):
+    """Hiển thị danh sách phiếu kiểm kê với các bộ lọc."""
     kiemke_list = KiemKe.objects.all().order_by('-ngay_tao')
+
+    # Xử lý các tham số tìm kiếm
     search_ma_kiemke = request.GET.get('ma_kiemke')
     search_muc_dich = request.GET.get('muc_dich')
     search_tinh_trang = request.GET.get('tinh_trang')
     search_tu_ngay = request.GET.get('tu_ngay')
     search_den_ngay = request.GET.get('den_ngay')
 
+    # Áp dụng các bộ lọc
     if search_ma_kiemke:
         kiemke_list = kiemke_list.filter(ma_kiemke__icontains=search_ma_kiemke)
     if search_muc_dich:
@@ -975,7 +1293,8 @@ def kiemke_list(request):
     if search_den_ngay:
         kiemke_list = kiemke_list.filter(thoi_gian__date__lte=search_den_ngay)
 
-    paginator = Paginator(kiemke_list, 10)  # Hiển thị 10 phiếu trên mỗi trang
+    # Phân trang
+    paginator = Paginator(kiemke_list, 10)  # 10 phiếu mỗi trang
     page = request.GET.get('page')
     try:
         kiemke_page = paginator.page(page)
@@ -993,89 +1312,275 @@ def kiemke_list(request):
     }
     return render(request, 'cuoiky/kiemke_list.html', context)
 
+
+@login_required
 def kiemke_create(request):
-    print(f"Request method: {request.method}")
+    """Tạo mới phiếu kiểm kê."""
     if request.method == 'POST':
-        print("request.POST:", request.POST)
         kiemke_form = KiemKeForm(request.POST)
-        chitiet_formset = ChiTietKiemKeFormSet(request.POST)
-        print("kiemke_form.is_valid():", kiemke_form.is_valid())
-        print("chitiet_formset.is_valid():", chitiet_formset.is_valid())
-        if kiemke_form.is_valid() and chitiet_formset.is_valid():
-            kiemke = kiemke_form.save(commit=False)
-            kiemke.tao_boi = request.user if request.user.is_authenticated else None
-            with transaction.atomic():
-                kiemke.save()
-                chitiet_formset.instance = kiemke
-                chitiet_formset.save()
-            messages.success(request, 'Phiếu kiểm kê đã được tạo thành công.')
-            return redirect(reverse('kiemke-detail', kwargs={'ma_kiemke': kiemke.ma_kiemke}))
+
+        # Xử lý dữ liệu chi tiết kiểm kê từ form
+        chi_tiet_data = []
+        for key, value in request.POST.items():
+            if key.startswith('hang_hoa_'):
+                index = key.split('_')[-1]
+                hang_hoa_id = value
+                so_luong_he_thong = request.POST.get(f'so_luong_he_thong_{index}', 0)
+                so_luong_tai_kho = request.POST.get(f'so_luong_tai_kho_{index}', 0)
+                xu_ly_value = request.POST.get(f'xu_ly_value_{index}', '')  # Lấy giá trị từ hidden field
+
+                chi_tiet_data.append({
+                    'hang_hoa': hang_hoa_id,
+                    'so_luong_he_thong': so_luong_he_thong,
+                    'so_luong_tai_kho': so_luong_tai_kho,
+                    'xu_ly': xu_ly_value  # Sử dụng giá trị từ hidden field
+                })
+
+        if kiemke_form.is_valid() and chi_tiet_data:
+            try:
+                with transaction.atomic():
+                    # Lưu phiếu kiểm kê
+                    kiemke = kiemke_form.save(commit=False)
+                    kiemke.tao_boi = request.user
+                    kiemke.tinh_trang = 'CHO_DUYET'  # Đặt trạng thái mặc định là chờ duyệt
+                    kiemke.ngay_tao = timezone.now()  # Đặt thời gian tạo
+
+                    # Tạo mã kiểm kê tự động nếu chưa có
+                    if not kiemke.ma_kiemke:
+                        prefix = 'KK'
+                        last_kiemke = KiemKe.objects.order_by('-ma_kiemke').first()
+                        if last_kiemke and last_kiemke.ma_kiemke.startswith(prefix):
+                            try:
+                                last_number = int(last_kiemke.ma_kiemke.replace(prefix, ''))
+                                new_number = last_number + 1
+                            except ValueError:
+                                new_number = 1
+                        else:
+                            new_number = 1
+                        kiemke.ma_kiemke = f"{prefix}{new_number:04d}"
+
+                    kiemke.save()
+
+                    # Lưu chi tiết kiểm kê
+                    for item in chi_tiet_data:
+                        hang_hoa = HangHoa.objects.get(pk=item['hang_hoa'])
+                        so_luong_he_thong = int(item['so_luong_he_thong'])
+                        so_luong_tai_kho = int(item['so_luong_tai_kho'])
+                        chenh_lech = so_luong_tai_kho - so_luong_he_thong
+
+                        ChiTietKiemKe.objects.create(
+                            phieu_kiem_ke=kiemke,
+                            hang_hoa=hang_hoa,
+                            so_luong_he_thong=so_luong_he_thong,
+                            so_luong_tai_kho=so_luong_tai_kho,
+                            chenh_lech=chenh_lech,
+                            xu_ly=item['xu_ly']
+                        )
+
+                messages.success(request, 'Phiếu kiểm kê đã được tạo thành công.')
+                return redirect('kiemke-detail', ma_kiemke=kiemke.ma_kiemke)
+            except Exception as e:
+                messages.error(request, f'Lỗi khi tạo phiếu kiểm kê: {str(e)}')
         else:
-            print("kiemke_form errors:", kiemke_form.errors)
-            print("chitiet_formset errors:", chitiet_formset.errors)
-            messages.error(request, 'Đã có lỗi xảy ra. Vui lòng kiểm tra lại thông tin.')
+            if not chi_tiet_data:
+                messages.error(request, 'Vui lòng thêm ít nhất một hàng hóa vào phiếu kiểm kê.')
+            else:
+                messages.error(request, 'Vui lòng kiểm tra lại thông tin phiếu kiểm kê.')
     else:
-        kiemke_form = KiemKeForm()
-        chitiet_formset = ChiTietKiemKeFormSet()
+        # Tạo mã kiểm kê tự động
+        prefix = 'KK'
+        last_kiemke = KiemKe.objects.order_by('-ma_kiemke').first()
+        if last_kiemke and last_kiemke.ma_kiemke.startswith(prefix):
+            try:
+                last_number = int(last_kiemke.ma_kiemke.replace(prefix, ''))
+                new_number = last_number + 1
+            except ValueError:
+                new_number = 1
+        else:
+            new_number = 1
+        ma_kiemke = f"{prefix}{new_number:04d}"
+
+        kiemke_form = KiemKeForm(initial={
+            'ma_kiemke': ma_kiemke,
+            'tinh_trang': 'CHO_DUYET'  # Đặt trạng thái mặc định là chờ duyệt
+        })
 
     context = {
         'kiemke_form': kiemke_form,
-        'chitiet_formset': chitiet_formset,
-        'all_hanghoa': HangHoa.objects.all()
+        'all_hanghoa': HangHoa.objects.all(),
+        'now': timezone.now()
     }
     return render(request, 'cuoiky/kiemke_create.html', context)
 
+
+@login_required
 def kiemke_detail(request, ma_kiemke):
+    """Xem chi tiết phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
     context = {
         'kiemke': kiemke,
     }
     return render(request, 'cuoiky/kiemke_detail.html', context)
 
+
+@login_required
 def kiemke_update(request, ma_kiemke):
+    """Cập nhật phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
+
+    # Không cho phép cập nhật phiếu đã duyệt
+    if kiemke.tinh_trang != 'CHO_DUYET':
+        messages.error(request, 'Không thể cập nhật phiếu kiểm kê đã được duyệt hoặc từ chối.')
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
     if request.method == 'POST':
         kiemke_form = KiemKeForm(request.POST, instance=kiemke)
-        chitiet_formset = ChiTietKiemKeFormSetUpdate(request.POST, instance=kiemke)
-        if kiemke_form.is_valid() and chitiet_formset.is_valid():
+
+        # Xử lý dữ liệu chi tiết kiểm kê từ form
+        chi_tiet_data = []
+        chi_tiet_ids = []
+
+        for key, value in request.POST.items():
+            if key.startswith('hang_hoa_'):
+                index = key.split('_')[-1]
+                hang_hoa_id = value
+                chi_tiet_id = request.POST.get(f'chi_tiet_id_{index}', '')
+                so_luong_he_thong = request.POST.get(f'so_luong_he_thong_{index}', 0)
+                so_luong_tai_kho = request.POST.get(f'so_luong_tai_kho_{index}', 0)
+                xu_ly_value = request.POST.get(f'xu_ly_value_{index}', '')  # Lấy giá trị từ hidden field
+                delete = request.POST.get(f'delete_{index}', '') == 'on'
+
+                if not delete:
+                    chi_tiet_data.append({
+                        'id': chi_tiet_id,
+                        'hang_hoa': hang_hoa_id,
+                        'so_luong_he_thong': so_luong_he_thong,
+                        'so_luong_tai_kho': so_luong_tai_kho,
+                        'xu_ly': xu_ly_value  # Sử dụng giá trị từ hidden field
+                    })
+                    if chi_tiet_id:
+                        chi_tiet_ids.append(int(chi_tiet_id))
+
+        if kiemke_form.is_valid() and chi_tiet_data:
             try:
                 with transaction.atomic():
-                    kiemke_form.save()  # Lưu thông tin chung của phiếu kiểm kê
-                    chitiet_formset.save()  # Lưu các chi tiết kiểm kê (cập nhật/tạo mới/xóa)
+                    # Lưu phiếu kiểm kê
+                    kiemke = kiemke_form.save(commit=False)
+                    kiemke.tinh_trang = 'CHO_DUYET'  # Đảm bảo trạng thái vẫn là chờ duyệt
+                    kiemke.save()
+
+                    # Xóa chi tiết không còn trong form
+                    kiemke.chi_tiet_kiem_ke.exclude(id__in=chi_tiet_ids).delete()
+
+                    # Cập nhật hoặc tạo mới chi tiết kiểm kê
+                    for item in chi_tiet_data:
+                        hang_hoa = HangHoa.objects.get(pk=item['hang_hoa'])
+                        so_luong_he_thong = int(item['so_luong_he_thong'])
+                        so_luong_tai_kho = int(item['so_luong_tai_kho'])
+                        chenh_lech = so_luong_tai_kho - so_luong_he_thong
+
+                        if item['id']:
+                            # Cập nhật chi tiết hiện có
+                            chi_tiet = ChiTietKiemKe.objects.get(id=item['id'])
+                            chi_tiet.hang_hoa = hang_hoa
+                            chi_tiet.so_luong_he_thong = so_luong_he_thong
+                            chi_tiet.so_luong_tai_kho = so_luong_tai_kho
+                            chi_tiet.chenh_lech = chenh_lech
+                            chi_tiet.xu_ly = item['xu_ly']
+                            chi_tiet.save()
+                        else:
+                            # Tạo chi tiết mới
+                            ChiTietKiemKe.objects.create(
+                                phieu_kiem_ke=kiemke,
+                                hang_hoa=hang_hoa,
+                                so_luong_he_thong=so_luong_he_thong,
+                                so_luong_tai_kho=so_luong_tai_kho,
+                                chenh_lech=chenh_lech,
+                                xu_ly=item['xu_ly']
+                            )
+
                 messages.success(request, 'Phiếu kiểm kê đã được cập nhật thành công.')
-                return redirect(reverse('kiemke-detail', kwargs={'ma_kiemke': kiemke.ma_kiemke}))
+                return redirect('kiemke-detail', ma_kiemke=kiemke.ma_kiemke)
             except Exception as e:
-                messages.error(request, f'Đã có lỗi xảy ra khi cập nhật: {e}')
+                messages.error(request, f'Lỗi khi cập nhật phiếu kiểm kê: {str(e)}')
         else:
-            messages.error(request, 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.')
-            # Có thể bạn muốn render lại form với lỗi để người dùng sửa
-            # context['kiemke_form'] = kiemke_form
-            # context['chitiet_formset'] = chitiet_formset
-            # return render(request, 'cuoiky/kiemke_update.html', context)
+            if not chi_tiet_data:
+                messages.error(request, 'Vui lòng thêm ít nhất một hàng hóa vào phiếu kiểm kê.')
+            else:
+                messages.error(request, 'Vui lòng kiểm tra lại thông tin phiếu kiểm kê.')
     else:
         kiemke_form = KiemKeForm(instance=kiemke)
-        chitiet_formset = ChiTietKiemKeFormSetUpdate(instance=kiemke)
 
     context = {
         'kiemke_form': kiemke_form,
-        'chitiet_formset': chitiet_formset,
         'kiemke': kiemke,
-        # 'all_kho': Kho.objects.all(), # Nếu cần
+        'all_hanghoa': HangHoa.objects.all()
     }
     return render(request, 'cuoiky/kiemke_update.html', context)
 
+
+@login_required
 def kiemke_delete(request, ma_kiemke):
+    """Xóa phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
+
+    # Không cho phép xóa phiếu đã duyệt
+    if kiemke.tinh_trang != 'CHO_DUYET':
+        messages.error(request, 'Không thể xóa phiếu kiểm kê đã được duyệt hoặc từ chối.')
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
     if request.method == 'POST':
-        kiemke.delete()
-        messages.success(request, f'Phiếu kiểm kê mã {ma_kiemke} đã được xóa.')
-        return redirect(reverse('kiemke-list'))
-    else:
-        # Không nên hiển thị trang xác nhận xóa riêng, xử lý bằng modal ở list view
-        return redirect(reverse('kiemke-list'))
+        try:
+            with transaction.atomic():
+                # Xóa chi tiết kiểm kê trước
+                kiemke.chi_tiet_kiem_ke.all().delete()
+                # Xóa phiếu kiểm kê
+                kiemke.delete()
+
+            messages.success(request, f'Phiếu kiểm kê {ma_kiemke} đã được xóa thành công.')
+            return redirect('kiemke-list')
+        except Exception as e:
+            messages.error(request, f'Lỗi khi xóa phiếu kiểm kê: {str(e)}')
+            return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
+    # Nếu không phải POST, chuyển hướng về trang danh sách
+    return redirect('kiemke-list')
 
 
+@login_required
+def duyet_kiemke(request, ma_kiemke):
+    kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
+
+    if kiemke.tinh_trang != 'CHO_DUYET':
+        messages.error(request, 'Chỉ có thể duyệt phiếu đang ở trạng thái chờ duyệt.')
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
+    try:
+        with transaction.atomic():
+            # Cập nhật trạng thái phiếu
+            kiemke.tinh_trang = 'DA_DUYET'
+            kiemke.save()
+
+        messages.success(request, f'Phiếu kiểm kê {ma_kiemke} đã được duyệt .')
+    except Exception as e:
+        messages.error(request, f'Lỗi khi duyệt phiếu kiểm kê: {str(e)}')
+
+    return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
 
 
+@login_required
+def tu_choi_kiemke(request, ma_kiemke):
+    """Từ chối phiếu kiểm kê."""
+    kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
+
+    if kiemke.tinh_trang != 'CHO_DUYET':
+        messages.error(request, 'Chỉ có thể từ chối phiếu đang ở trạng thái chờ duyệt.')
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
+    kiemke.tinh_trang = 'TU_CHOI'
+    kiemke.save()
+
+    messages.success(request, f'Phiếu kiểm kê {ma_kiemke} đã bị từ chối.')
+    return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
 
 # cuoiky/views.py

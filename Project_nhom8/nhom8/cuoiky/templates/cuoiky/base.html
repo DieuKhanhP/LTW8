@@ -19,13 +19,14 @@
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
 
     <style>
         body {
             display: flex;
             min-height: 100vh;
             background-color: #f4f6f9;
+            font-family: 'Montserrat', sans-serif;
         }
         .sidebar {
             width: 250px;
@@ -144,7 +145,7 @@
             {# Bọc trong thẻ <a> nếu muốn click logo về trang chủ #}
             <a href="{% url 'tongquan' %}" class="sidebar-brand"> {# Thay # bằng URL trang chủ nếu cần, ví dụ {% url 'ten_url_trang_chu' %} #}
                 {# Đường dẫn tới logo của bạn trong thư mục static #}
-                <img src="{% static 'images/logo.jpg' %}" alt="Xuân Trường Logo">
+                <img src="{% static 'images/logo.png' %}" alt="Xuân Trường Logo">
                 <h5 class="mb-0">Xuân Trường</h5> {# Bỏ mt-2 vì đã căn giữa bằng flexbox #}
             </a>
 
@@ -220,6 +221,13 @@
                  <button class="btn btn-sm border-0 me-1" title="Thông báo"><i class="fas fa-bell"></i></button>
                  <button class="btn btn-sm border-0 me-1" onclick="location.reload();" title="Tải lại trang"><i class="fas fa-sync-alt"></i></button>
                  <button class="btn btn-sm border-0" title="Tài khoản" onclick="location.href='{% url 'profile' %}'"><i class="fas fa-user"></i></button>
+                <button class="btn btn-sm border-0 ms-1" title="Đăng xuất" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+
+</button>
+
+
              </div>
          </header>
 
@@ -360,7 +368,31 @@
             setTimeout(openXuatNhapMenu, 300);
         }
     });
+
 </script>
+    <!-- Modal xác nhận đăng xuất -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title" id="logoutModalLabel">
+          <i class="fas fa-sign-out-alt me-2"></i>Xác nhận đăng xuất
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <div class="modal-body">
+        Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <a href="{% url 'logout' %}" class="btn btn-danger">
+          <i class="fas fa-sign-out-alt me-1"></i>Đăng xuất
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
 
     {% block extra_js %}{% endblock %}
 </body>

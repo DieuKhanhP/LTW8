@@ -3,7 +3,13 @@
 
 {% block title %}Thông tin cá nhân - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Thông tin cá nhân{% endblock %}
+{% block page_title %}
+    {% if viewing_self %}
+        Thông tin cá nhân
+    {% else %}
+        Thông tin nhân viên: {{ viewed_user.get_full_name }}
+    {% endif %}
+{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -11,41 +17,44 @@
         max-width: 1500px;
         margin: 0 auto;
     }
-    
+
     .profile-header {
         background-color: #fff;
         border-radius: 0.5rem;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    
+
     .profile-header h4 {
         margin-bottom: 0.5rem;
         color: #333;
     }
-    
+
     .profile-header p {
         color: #6c757d;
         margin-bottom: 0;
     }
-    
+
     .profile-card {
         background-color: #fff;
         border-radius: 0.5rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         margin-bottom: 1.5rem;
     }
-    
+
     .profile-card-header {
         padding: 1rem 1.5rem;
         border-bottom: 1px solid #e9ecef;
     }
-    
+
     .profile-card-body {
         padding: 1.5rem;
     }
-    
+
     .form-group {
         margin-bottom: 1rem;
     }
@@ -62,109 +71,255 @@
     .alert {
         margin-bottom: 1rem;
     }
+
+    .staff-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .staff-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .staff-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .staff-item.active {
+        background-color: #e9ecef;
+    }
+
+    .staff-item-name {
+        font-weight: 500;
+    }
+
+    .staff-item-position {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="profile-container">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <div class="profile-header">
-        <h4>{{ user.get_full_name }}</h4>
-        <p>{{ profile_form.position.initial|default:"Nhân viên" }} | {{ user.username }}</p>
-    </div>
-
-    <div class="profile-card">
-        <div class="profile-card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-user me-2"></i>Thông tin cá nhân
-            </h5>
+        <div>
+            <h4>{{ viewed_user.get_full_name }}</h4>
+            <p>{{ profile_form.position.initial|default:"Nhân viên" }} | {{ viewed_user.username }}</p>
         </div>
 
-        <div class="profile-card-body">
-            <form method="post" id="profile-form">
-                {% csrf_token %}
+        {% if is_manager %}
+            <div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staffListModal">
+                    <i class="fas fa-users me-2"></i>Danh sách nhân viên kho
+                </button>
+            </div>
+        {% endif %}
+    </div>
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.username.id_for_label }}" class="form-label">Tên đăng nhập</label>
-                            {{ profile_form.username }}
-                            {% if profile_form.username.errors %}
-                                <div class="text-danger">{{ profile_form.username.errors }}</div>
-                            {% endif %}
-                        </div>
+    <div class="row">
+        {% if is_manager and warehouse_staff %}
+            <div class="col-md-3">
+                <div class="profile-card">
+                    <div class="profile-card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Nhân viên kho
+                        </h5>
                     </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.position.id_for_label }}" class="form-label">Chức vụ</label>
-                            {{ profile_form.position }}
-                            {% if profile_form.position.errors %}
-                                <div class="text-danger">{{ profile_form.position.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.last_name.id_for_label }}" class="form-label">Họ</label>
-                            {{ profile_form.last_name }}
-                            {% if profile_form.last_name.errors %}
-                                <div class="text-danger">{{ profile_form.last_name.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.first_name.id_for_label }}" class="form-label">Tên</label>
-                            {{ profile_form.first_name }}
-                            {% if profile_form.first_name.errors %}
-                                <div class="text-danger">{{ profile_form.first_name.errors }}</div>
-                            {% endif %}
-                        </div>
+                    <div class="staff-list">
+                        {% for staff in warehouse_staff %}
+                            <div class="staff-item {% if staff.username == viewed_user.username %}active{% endif %}"
+                                 onclick="window.location.href='{% url 'profile_detail' username=staff.username %}'">
+                                <div class="staff-item-name">{{ staff.get_full_name|default:staff.username }}</div>
+                                <div class="staff-item-position">{{ staff.position|default:"Nhân viên" }}</div>
+                            </div>
+                        {% endfor %}
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.email.id_for_label }}" class="form-label">Email</label>
-                            {{ profile_form.email }}
-                            {% if profile_form.email.errors %}
-                                <div class="text-danger">{{ profile_form.email.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="{{ profile_form.phone.id_for_label }}" class="form-label">Số điện thoại</label>
-                            {{ profile_form.phone }}
-                            {% if profile_form.phone.errors %}
-                                <div class="text-danger">{{ profile_form.phone.errors }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
+            </div>
+            <div class="col-md-9">
+        {% else %}
+            <div class="col-md-12">
+        {% endif %}
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Thông tin cá nhân
+                    </h5>
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Lưu thay đổi
-                    </button>
+                <div class="profile-card-body">
+                    <form method="post" id="profile-form">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.username.id_for_label }}" class="form-label">Tên đăng nhập</label>
+                                    {{ profile_form.username }}
+                                    {% if profile_form.username.errors %}
+                                        <div class="text-danger">{{ profile_form.username.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.position.id_for_label }}" class="form-label">Chức vụ</label>
+                                    {{ profile_form.position }}
+                                    {% if profile_form.position.errors %}
+                                        <div class="text-danger">{{ profile_form.position.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.last_name.id_for_label }}" class="form-label">Họ</label>
+                                    {{ profile_form.last_name }}
+                                    {% if profile_form.last_name.errors %}
+                                        <div class="text-danger">{{ profile_form.last_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.first_name.id_for_label }}" class="form-label">Tên</label>
+                                    {{ profile_form.first_name }}
+                                    {% if profile_form.first_name.errors %}
+                                        <div class="text-danger">{{ profile_form.first_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.email.id_for_label }}" class="form-label">Email</label>
+                                    {{ profile_form.email }}
+                                    {% if profile_form.email.errors %}
+                                        <div class="text-danger">{{ profile_form.email.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ profile_form.phone.id_for_label }}" class="form-label">Số điện thoại</label>
+                                    {{ profile_form.phone }}
+                                    {% if profile_form.phone.errors %}
+                                        <div class="text-danger">{{ profile_form.phone.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            {% if viewing_self or is_manager %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Lưu thay đổi
+                                </button>
+                            {% endif %}
+
+                            {% if not viewing_self %}
+                                <a href="{% url 'profile' %}" class="btn btn-secondary ms-2">
+                                    <i class="fas fa-user me-2"></i>Quay lại profile của tôi
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modal danh sách nhân viên -->
+{% if is_manager and warehouse_staff %}
+<div class="modal fade" id="staffListModal" tabindex="-1" aria-labelledby="staffListModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staffListModalLabel">Danh sách nhân viên kho</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="staffSearchInput" placeholder="Tìm kiếm nhân viên...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Họ và tên</th>
+                                <th>Tên đăng nhập</th>
+                                <th>Chức vụ</th>
+                                <th>Email</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for staff in warehouse_staff %}
+                            <tr class="staff-row">
+                                <td>{{ staff.get_full_name|default:"-" }}</td>
+                                <td>{{ staff.username }}</td>
+                                <td>{{ staff.position|default:"Nhân viên" }}</td>
+                                <td>{{ staff.email|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'profile_detail' username=staff.username %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye me-1"></i> Xem
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tìm kiếm nhân viên trong modal
+        const staffSearchInput = document.getElementById('staffSearchInput');
+        if (staffSearchInput) {
+            staffSearchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const staffRows = document.querySelectorAll('.staff-row');
+
+                staffRows.forEach(row => {
+                    const name = row.cells[0].textContent.toLowerCase();
+                    const username = row.cells[1].textContent.toLowerCase();
+                    const position = row.cells[2].textContent.toLowerCase();
+                    const email = row.cells[3].textContent.toLowerCase();
+
+                    if (name.includes(searchTerm) ||
+                        username.includes(searchTerm) ||
+                        position.includes(searchTerm) ||
+                        email.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

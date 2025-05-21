@@ -4,10 +4,14 @@ from rest_framework import routers
 
 from . import views
 from .views import login_view
+from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path('login/', login_view, name='login'),
+    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     path('profile/', views.profile_view, name='profile'),
+    path('profile/<str:username>/', views.profile_view, name='profile_detail'),
+
     # Sử dụng slug:<ma_hang> vì ma_hang là CharField và là primary_key
     # Nếu ma_hang chỉ chứa số, bạn có thể dùng <int:ma_hang> hoặc <str:ma_hang>
     # Tuy nhiên, slug an toàn hơn cho các mã có thể chứa chữ cái/ký tự đặc biệt
@@ -40,6 +44,8 @@ urlpatterns = [
     path('kiem-ke/<str:ma_kiemke>/', views.kiemke_detail, name='kiemke-detail'),
     path('kiem-ke/<str:ma_kiemke>/update/', views.kiemke_update, name='kiemke-update'),
     path('kiem-ke/<str:ma_kiemke>/delete/', views.kiemke_delete, name='kiemke-delete'),
+    path('kiem-ke/<str:ma_kiemke>/duyet/', views.duyet_kiemke, name='duyet-kiemke'),
+    path('kiem-ke/<str:ma_kiemke>/tu-choi/', views.tu_choi_kiemke, name='tu-choi-kiemke'),
 
     # Thêm các URL khác nếu cần
 ]

@@ -1,67 +1,199 @@
 {% extends 'cuoiky/base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Chi tiết phiếu kiểm kê - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Chi tiết phiếu kiểm kê{% endblock %}
+{% block page_title %}CHI TIẾT PHIẾU KIỂM KÊ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .status-pending {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .status-approved {
+        background-color: #198754;
+        color: white;
+    }
+    .status-rejected {
+        background-color: #dc3545;
+        color: white;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .info-value {
+        color: #212529;
+    }
+    .chenh-lech-positive {
+        color: #198754;
+    }
+    .chenh-lech-negative {
+        color: #dc3545;
+    }
+    .chenh-lech-zero {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="bg-light border rounded p-3 mb-3">
-    <h4>Thông tin chung</h4>
-    <div class="mb-2"><strong>Mã phiếu kiểm kê:</strong> {{ kiemke.ma_kiemke }}</div>
-    <div class="mb-2"><strong>Mục đích:</strong> {{ kiemke.muc_dich|default:"Không có" }}</div>
-    <div class="mb-2"><strong>Thời gian kiểm kê:</strong> {{ kiemke.thoi_gian|date:"d/m/Y H:i" }}</div>
-    <div class="mb-2"><strong>Tình trạng:</strong>
-        {% if kiemke.tinh_trang == 'CHO_DUYET' %}
-            <span class="badge bg-warning">Chờ duyệt</span>
-        {% elif kiemke.tinh_trang == 'DA_DUYET' %}
-            <span class="badge bg-primary">Đã duyệt</span>
-        {% elif kiemke.tinh_trang == 'TU_CHOI' %}
-            <span class="badge bg-danger">Từ chối</span>
-        {% endif %}
+<div class="card shadow rounded bg-light mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span>CHI TIẾT PHIẾU KIỂM KÊ: {{ kiemke.ma_kiemke }}</span>
+        <div class="d-flex align-items-center">
+            {% if kiemke.tinh_trang == 'CHO_DUYET' %}
+                <span class="status-badge status-pending">{{ kiemke.get_tinh_trang_display }}</span>
+            {% elif kiemke.tinh_trang == 'DA_DUYET' %}
+                <span class="status-badge status-approved">{{ kiemke.get_tinh_trang_display }}</span>
+            {% elif kiemke.tinh_trang == 'TU_CHOI' %}
+                <span class="status-badge status-rejected">{{ kiemke.get_tinh_trang_display }}</span>
+            {% endif %}
+            <span class="text-white small ms-2">
+                <i class="fas fa-user me-1"></i> {{ kiemke.tao_boi.get_full_name|default:kiemke.tao_boi.username|default:"Không rõ" }}
+                <i class="fas fa-calendar-alt ms-2 me-1"></i> {{ kiemke.ngay_tao|date:"d/m/Y H:i" }}
+            </span>
+        </div>
     </div>
-    <div class="mb-2"><strong>Người tạo:</strong> {{ kiemke.tao_boi|default:"Không rõ" }}</div>
-    <div class="mb-2"><strong>Ngày tạo:</strong> {{ kiemke.ngay_tao|date:"d/m/Y H:i" }}</div>
+
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Mã phiếu kiểm kê</label>
+                    <p class="form-control bg-white">{{ kiemke.ma_kiemke }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Mục đích kiểm kê</label>
+                    <p class="form-control bg-white">{{ kiemke.get_muc_dich_display }}</p>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Thời gian kiểm kê</label>
+                    <p class="form-control bg-white">{{ kiemke.thoi_gian|date:"d/m/Y H:i" }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Người tạo</label>
+                    <p class="form-control bg-white">{{ kiemke.tao_boi.get_full_name|default:kiemke.tao_boi.username|default:"-" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="mb-3 fw-bold text-primary">Chi tiết hàng hóa kiểm kê</h5>
+
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 5%">STT</th>
+                        <th style="width: 25%">Tên hàng hóa</th>
+                        <th style="width: 15%">Mã hàng</th>
+                        <th style="width: 10%">Đơn vị tính</th>
+                        <th style="width: 10%">Số lượng hệ thống</th>
+                        <th style="width: 10%">Số lượng thực tế</th>
+                        <th style="width: 10%">Chênh lệch</th>
+                        <th style="width: 15%">Xử lý</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chitiet in kiemke.chi_tiet_kiem_ke.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ chitiet.hang_hoa.ten_hang }}</td>
+                        <td>{{ chitiet.hang_hoa.ma_hang }}</td>
+                        <td>{{ chitiet.hang_hoa.don_vi_tinh }}</td>
+                        <td class="text-center">{{ chitiet.so_luong_he_thong }}</td>
+                        <td class="text-center">{{ chitiet.so_luong_tai_kho }}</td>
+                        <td class="text-center {% if chitiet.chenh_lech > 0 %}chenh-lech-positive{% elif chitiet.chenh_lech < 0 %}chenh-lech-negative{% else %}chenh-lech-zero{% endif %}">
+                            {{ chitiet.chenh_lech }}
+                        </td>
+                        <td>
+                            {% if chitiet.chenh_lech > 0 %}
+                                Thêm phiếu nhập kho
+                            {% elif chitiet.chenh_lech < 0 %}
+                                Thêm phiếu xuất kho
+                            {% else %}
+                                Không xử lý
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">Chưa có chi tiết hàng hóa</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <a href="{% url 'kiemke-list' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+            </a>
+
+            {% if kiemke.tinh_trang == 'CHO_DUYET' %}
+                <a href="{% url 'kiemke-update' kiemke.ma_kiemke %}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Sửa
+                </a>
+                <a href="{% url 'duyet-kiemke' kiemke.ma_kiemke %}" class="btn btn-success">
+                    <i class="fas fa-check me-1"></i> Duyệt
+                </a>
+                <a href="{% url 'tu-choi-kiemke' kiemke.ma_kiemke %}" class="btn btn-danger">
+                    <i class="fas fa-times me-1"></i> Từ chối
+                </a>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash-alt me-1"></i> Xóa
+                </button>
+            {% endif %}
+
+            <button type="button" class="btn btn-info" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> In phiếu
+            </button>
+        </div>
+    </div>
 </div>
 
-<div class="bg-light border rounded p-3 mb-3">
-    <h4>Chi tiết kiểm kê</h4>
-    <div class="table-responsive">
-        <table class="table table-bordered table-sm">
-            <thead class="table-dark">
-                <tr>
-                    <th>STT</th>
-                    <th>Tên hàng hóa</th>
-                    <th>Mã hàng</th>
-                    <th>Đơn vị tính</th>
-                    <th>SL Hệ thống</th>
-                    <th>SL Thực tế</th>
-                    <th>Chênh lệch</th>
-                    <th>Hướng xử lý</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ct in kiemke.chi_tiet_kiem_ke.all %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ ct.hang_hoa.ten_hang }}</td>
-                    <td>{{ ct.hang_hoa.ma_hang }}</td>
-                    <td>{{ ct.hang_hoa.don_vi_tinh }}</td>
-                    <td>{{ ct.so_luong_he_thong }}</td>
-                    <td>{{ ct.so_luong_tai_kho }}</td>
-                    <td>{{ ct.chenh_lech }}</td>
-                    <td>{{ ct.xu_ly|default:"Không có" }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="8" class="text-center">Không có chi tiết kiểm kê.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa phiếu kiểm kê <strong>{{ kiemke.ma_kiemke }}</strong> không?</p>
+                <p class="text-danger"><small>Lưu ý: Hành động này không thể hoàn tác.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form method="post" action="{% url 'kiemke-delete' ma_kiemke=kiemke.ma_kiemke %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Xác nhận xóa</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
 
-<div>
-    <a href="{% url 'kiemke-update' ma_kiemke=kiemke.ma_kiemke %}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i> Sửa phiếu kiểm kê</a>
-    <a href="{% url 'kiemke-list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
-</div>
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Additional JavaScript for functionality (if needed)
+    });
+</script>
 {% endblock %}

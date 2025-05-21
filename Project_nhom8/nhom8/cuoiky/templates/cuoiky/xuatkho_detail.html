@@ -16,132 +16,226 @@
     .hang-hoa-row td {
         vertical-align: middle;
     }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .status-pending {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .status-approved {
+        background-color: #198754;
+        color: white;
+    }
+    .status-rejected {
+        background-color: #dc3545;
+        color: white;
+    }
+    .status-completed {
+        background-color: #0d6efd;
+        color: white;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .info-value {
+        color: #212529;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">CHI TIẾT PHIẾU XUẤT KHO</h5>
-    </div>
+<div class="card shadow rounded bg-light mb-4">
+    <h5 class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span>CHI TIẾT PHIẾU XUẤT KHO: {{ xuatkho.ma_xuat }}</span>
+        <div>
+            {% if xuatkho.tinh_trang == 'CHO_DUYET' %}
+                <span class="status-badge status-pending">{{ xuatkho.get_tinh_trang_display }}</span>
+            {% elif xuatkho.tinh_trang == 'DA_DUYET' %}
+                <span class="status-badge status-approved">{{ xuatkho.get_tinh_trang_display }}</span>
+            {% elif xuatkho.tinh_trang == 'TU_CHOI' %}
+                <span class="status-badge status-rejected">{{ xuatkho.get_tinh_trang_display }}</span>
+            {% endif %}
+        </div>
+    </h5>
+
     <div class="card-body">
-        <form method="post" enctype="multipart/form-data" id="xuatkhoForm">
-            {% csrf_token %}
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Khách hàng</label>
+                    <p class="form-control bg-white">{{ xuatkho.nguon_nhan }}</p>
+                </div>
 
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label">Mã phiếu</label>
-                        <p class="form-control-plaintext">{{ xuatkho.ma_xuat }}</p>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Mã phiếu</label>
+                    <p class="form-control bg-white">{{ xuatkho.ma_xuat }}</p>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Nguồn nhận</label>
-                        <p class="form-control-plaintext">{{ xuatkho.nguon_nhan }}</p>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Số điện thoại</label>
+                    <p class="form-control bg-white">{{ xuatkho.sdt|default:"-" }}</p>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Số điện thoại</label>
-                        <p class="form-control-plaintext">{{ xuatkho.sdt }}</p>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Kho xuất</label>
+                    <p class="form-control bg-white">{{ xuatkho.kho }}</p>
+                </div>
+            </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Người tạo</label>
-                        <p class="form-control-plaintext">{{ xuatkho.tao_boi }}</p>
-                    </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Thời gian</label>
+                    <p class="form-control bg-white">{{ xuatkho.thoi_gian|date:"d/m/Y H:i" }}</p>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Ngày tạo phiếu</label>
-                        <p class="form-control-plaintext">{{ xuatkho.ngay_tao|date:"d/m/Y H:i" }}</p>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Địa chỉ</label>
+                    <p class="form-control bg-white">{{ xuatkho.diachi|default:"-" }}</p>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">File hợp đồng</label>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Lý do xuất</label>
+                    <p class="form-control bg-white">
+                        {{ xuatkho.get_ly_do_display }}
+                        {% if xuatkho.ly_do == 'KHAC' %}
+                            <br><small>Lý do khác: {{ xuatkho.ly_do_khac|default:"-" }}</small>
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Người tạo</label>
+                    <p class="form-control bg-white">{{ xuatkho.tao_boi.get_full_name|default:xuatkho.tao_boi.username|default:"-" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Hợp đồng</label>
+                    <p class="form-control bg-white">
                         {% if xuatkho.url_hop_dong %}
-                        <p class="form-control-plaintext"><a href="{{ xuatkho.url_hop_dong.url }}" target="_blank">Xem file</a></p>
+                            <a href="{{ xuatkho.url_hop_dong.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-download me-1"></i> Xem hợp đồng
+                            </a>
                         {% else %}
-                        <p class="form-control-plaintext">Không có file</p>
+                            -
                         {% endif %}
-                    </div>
+                    </p>
                 </div>
+            </div>
 
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label">Thời gian xuất</label>
-                        <p class="form-control-plaintext">{{ xuatkho.thoi_gian|date:"d/m/Y H:i" }}</p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Địa chỉ giao hàng</label>
-                        <p class="form-control-plaintext">{{ xuatkho.diachi }}</p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Lý do xuất</label>
-                        <p class="form-control-plaintext">{{ xuatkho.ly_do|default:"Không có" }}</p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Tình trạng phiếu</label>
-                        <p class="form-control-plaintext">{{ xuatkho.get_tinh_trang_display }}</p>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Tổng tiền</label>
-                        <p class="form-control-plaintext">{{ xuatkho.tong|floatformat:0|intcomma }} VNĐ</p>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">File sổ cũ</label>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Sổ cũ</label>
+                    <p class="form-control bg-white">
                         {% if xuatkho.url_so_cu %}
-                        <p class="form-control-plaintext"><a href="{{ xuatkho.url_so_cu.url }}" target="_blank">Xem file</a></p>
+                            <a href="{{ xuatkho.url_so_cu.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-download me-1"></i> Xem sổ cũ
+                            </a>
                         {% else %}
-                        <p class="form-control-plaintext">Không có file</p>
+                            -
                         {% endif %}
-                    </div>
+                    </p>
                 </div>
             </div>
+        </div>
 
-            <h5 class="mb-3">Chi tiết hàng hóa</h5>
+        <h5 class="mb-3 fw-bold text-primary">Chi tiết hàng hóa</h5>
 
-            <div class="table-responsive mb-3">
-                <table class="table table-bordered table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th style="width: 5%">STT</th>
-                            <th style="width: 30%">Tên hàng hóa</th>
-                            <th style="width: 15%">Mã hàng</th>
-                            <th style="width: 15%">Đơn giá xuất</th>
-                            <th style="width: 10%">Số lượng xuất</th>
-                            <th style="width: 10%">Chiết khấu (%)</th>
-                            <th style="width: 15%">Thành tiền</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for chitiet in xuatkho.chi_tiet_xuat.all %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ chitiet.ma_hang.ten_hang }}</td>
-                            <td>{{ chitiet.ma_hang.ma_hang }}</td>
-                            <td class="text-end">{{ chitiet.don_gia_xuat|floatformat:0 }}</td>
-                            <td class="text-end">{{ chitiet.so_luong_xuat }}</td>
-                            <td class="text-end">{{ chitiet.chiet_khau }}</td>
-                            <td class="text-end">{{ chitiet.thanh_tien|floatformat:0|intcomma }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center">Chưa có chi tiết hàng hóa</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 5%">STT</th>
+                        <th style="width: 30%">Tên hàng hóa</th>
+                        <th style="width: 15%">Mã hàng</th>
+                        <th style="width: 15%">Đơn giá</th>
+                        <th style="width: 10%">Số lượng</th>
+                        <th style="width: 10%">Chiết khấu (%)</th>
+                        <th style="width: 15%">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chitiet in xuatkho.chi_tiet_xuat.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ chitiet.ma_hang.ten_hang }}</td>
+                        <td>{{ chitiet.ma_hang.ma_hang }}</td>
+                        <td class="text-end">{{ chitiet.don_gia_xuat|floatformat:0|intcomma }}</td>
+                        <td class="text-center">{{ chitiet.so_luong_xuat }}</td>
+                        <td class="text-center">{{ chitiet.chiet_khau|floatformat:0 }}</td>
+                        <td class="text-end">{{ chitiet.thanh_tien|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Chưa có chi tiết hàng hóa</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-secondary">
+                        <td colspan="6" class="text-end fw-bold">Tổng cộng:</td>
+                        <td class="text-end fw-bold">{{ xuatkho.tong|floatformat:0|intcomma }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
 
-            <div class="d-flex gap-2">
-                <a href="{% url 'xuatkho-list' %}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+        <div class="d-flex gap-2 mt-4">
+            <a href="{% url 'xuatkho-list' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-1"></i> Quay lại danh sách
+            </a>
+
+            {% if xuatkho.tinh_trang == 'CHO_DUYET' %}
+                <a href="{% url 'xuatkho-update' xuatkho.ma_xuat %}" class="btn btn-warning">
+                    <i class="fas fa-edit me-1"></i> Sửa
                 </a>
+                <a href="{% url 'xuatkho-duyet' xuatkho.ma_xuat %}" class="btn btn-success">
+                    <i class="fas fa-check me-1"></i> Duyệt
+                </a>
+                <a href="{% url 'xuatkho-tuchoi' xuatkho.ma_xuat %}" class="btn btn-danger">
+                    <i class="fas fa-times me-1"></i> Từ chối
+                </a>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="fas fa-trash-alt me-1"></i> Xóa
+                </button>
+            {% endif %}
+
+            <button type="button" class="btn btn-info" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> In phiếu
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        </form>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa phiếu xuất kho <strong>{{ xuatkho.ma_xuat }}</strong> không?</p>
+                <p class="text-danger"><small>Lưu ý: Hành động này không thể hoàn tác.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <form method="post" action="{% url 'xuatkho-delete' xuatkho.ma_xuat %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Xác nhận xóa</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -149,7 +243,7 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // JavaScript thêm nếu cần
+        // Additional JavaScript for functionality (if needed)
     });
 </script>
 {% endblock %}

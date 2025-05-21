@@ -3,7 +3,7 @@
 
 {% block title %}Danh sách Phiếu kiểm kê - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Danh sách Phiếu kiểm kê{% endblock %}
+{% block page_title %}DANH SÁCH PHIẾU KIỂM KÊ{% endblock %}
 
 {% block content %}
 <form method="get" action="{% url 'kiemke-list' %}" class="mb-3 p-3 bg-light border rounded">
@@ -14,7 +14,14 @@
         </div>
         <div class="col-md">
             <label for="muc_dich" class="form-label form-label-sm">Mục đích</label>
-            <input type="text" name="muc_dich" id="muc_dich" class="form-control form-control-sm" value="{{ request.GET.muc_dich|default:'' }}">
+            <select name="muc_dich" id="muc_dich" class="form-select form-select-sm">
+                <option value="">-- Tất cả --</option>
+                <option value="DINH_KY" {% if request.GET.muc_dich == 'DINH_KY' %}selected{% endif %}>Kiểm kê định kỳ</option>
+                <option value="DOT_XUAT" {% if request.GET.muc_dich == 'DOT_XUAT' %}selected{% endif %}>Kiểm kê đột xuất</option>
+                <option value="DAU_KY" {% if request.GET.muc_dich == 'TU_CHOI' %}selected{% endif %}>Kiểm kê đầu kỳ</option>
+                <option value="CUOI_KY" {% if request.GET.muc_dich == 'TU_CHOI' %}selected{% endif %}>Kiểm kê cuối kỳ</option>
+                <option value="BAO_TRI" {% if request.GET.muc_dich == 'TU_CHOI' %}selected{% endif %}>Kiểm kê bảo trì, bảo dưỡng</option>
+            </select>
         </div>
         <div class="col-md">
             <label for="tinh_trang" class="form-label form-label-sm">Tình trạng</label>
@@ -67,7 +74,7 @@
             <tr>
                 <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td>{{ kk.ma_kiemke }}</td>
-                <td>{{ kk.muc_dich }}</td>
+                <td>{{ kk.get_muc_dich_display }}</td>
                 <td>{{ kk.thoi_gian|date:"d/m/Y H:i" }}</td>
                 <td>
                     {% if kk.tinh_trang == 'CHO_DUYET' %}

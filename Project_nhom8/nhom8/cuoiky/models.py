@@ -612,10 +612,6 @@ class ChiTietKiemKe(models.Model):
         if self.so_luong_he_thong is None:
             self.so_luong_he_thong = self.hang_hoa.so_luong_he_thong
 
-    def save(self, *args, **kwargs):
-        with transaction.atomic():
-            self.chenh_lech = self.so_luong_tai_kho - self.so_luong_he_thong
-            super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Chi tiết {self.phieu_kiem_ke.ma_kiemke} - {self.hang_hoa.ten_hang}"
@@ -673,19 +669,6 @@ def update_xuatkho_total_after_delete(sender, instance, **kwargs):
             hang_hoa.save()
         except HangHoa.DoesNotExist:
             pass
-
-
-@receiver(post_save, sender=KiemKe)
-def update_tonkho_after_kiemke(sender, instance, **kwargs):
-    if instance.tinh_trang == 'DA_DUYET':
-        with transaction.atomic():
-            for chi_tiet in instance.chi_tiet_kiem_ke.all():
-                try:
-                    hang_hoa = HangHoa.objects.get(ma_hang=chi_tiet.hang_hoa.ma_hang)
-                    hang_hoa.so_luong_he_thong = chi_tiet.so_luong_tai_kho
-                    hang_hoa.save()
-                except HangHoa.DoesNotExist:
-                    pass
 
 
 @receiver(post_save, sender=HangHoa)

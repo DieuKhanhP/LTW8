@@ -1,248 +1,249 @@
 {% extends 'cuoiky/base.html' %}
 {% load static %}
-{% load widget_tweaks %}
 
-{% block title %}Sửa phiếu kiểm kê - VLXD Xuân Trường{% endblock %}
+{% block title %}Cập nhật phiếu kiểm kê - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Sửa biên bản kiểm kê hàng hóa{% endblock %}
+{% block page_title %}Cập nhật biên bản kiểm kê{% endblock %}
 
 {% block extra_head %}
 <style>
-.delete-row {
-    color: #dc3545;
-    cursor: pointer;
-}
-
-.hang-hoa-row td {
-    vertical-align: middle;
-}
-
-.modal-body label {
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.is-invalid {
-    border-color: #dc3545 !important;
-}
-
-.invalid-feedback {
-    color: #dc3545;
-    font-size: 0.875em;
-}
-
-.add-row {
-    color: #198754;
-    cursor: pointer;
-}
-
-.modal-body input[type="checkbox"] {
-    margin-right: 0.5rem;
-}
+    .delete-row {
+        color: #dc3545;
+        cursor: pointer;
+    }
+    .hang-hoa-row td {
+        vertical-align: middle;
+    }
+    .chenh-lech-positive {
+        color: #198754;
+    }
+    .chenh-lech-negative {
+        color: #dc3545;
+    }
+    .chenh-lech-zero {
+        color: #6c757d;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .status-pending {
+        background-color: #ffc107;
+        color: #212529;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-    {% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-        <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">PHIẾU KIỂM KÊ</h5>
+<div class="card shadow rounded bg-light mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">CẬP NHẬT BIÊN BẢN KIỂM KÊ: {{ kiemke.ma_kiemke }}</h5>
+        <div class="d-flex align-items-center">
+            <span class="status-badge status-pending me-2">Chờ duyệt</span>
+            <span class="text-white small">
+                <i class="fas fa-user me-1"></i> {{ kiemke.tao_boi.get_full_name|default:kiemke.tao_boi.username }}
+                <i class="fas fa-calendar-alt ms-2 me-1"></i> {{ kiemke.ngay_tao|date:"d/m/Y H:i" }}
+            </span>
         </div>
-        <div class="card-body">
-            <form method="post" id="kiemkeForm">
-                {% csrf_token %}
+    </div>
+    <div class="card-body">
+        <form method="post" id="kiemkeForm">
+            {% csrf_token %}
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ kiemke_form.ma_kiemke.id_for_label }}" class="form-label form-label-sm">Mã kiểm kê*</label>
-                            {{ kiemke_form.ma_kiemke|attr:"class:form-control form-control-sm"|attr:"readonly:readonly" }}
-                            {% if kiemke_form.ma_kiemke.errors %}
-                                <div class="text-danger">{{ kiemke_form.ma_kiemke.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ kiemke_form.kiem_ke_tai_kho.id_for_label }}" class="form-label form-label-sm">Kiểm kê tại kho</label>
-                            {{ kiemke_form.kiem_ke_tai_kho|attr:"class:form-select form-select-sm" }}
-                            {% if kiemke_form.kiem_ke_tai_kho.errors %}
-                                <div class="text-danger">{{ kiemke_form.kiem_ke_tai_kho.errors }}</div>
-                            {% endif %}
-                        </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="ma_kiemke" class="form-label fw-bold text-primary">Mã kiểm kê</label>
+                        <input type="text" class="form-control" id="ma_kiemke" name="ma_kiemke" value="{{ kiemke.ma_kiemke }}" readonly>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ kiemke_form.thoi_gian.id_for_label }}" class="form-label form-label-sm">Thời gian kiểm kê*</label>
-                            {{ kiemke_form.thoi_gian|attr:"class:form-control form-control-sm" }}
-                            {% if kiemke_form.thoi_gian.errors %}
-                                <div class="text-danger">{{ kiemke_form.thoi_gian.errors }}</div>
-                            {% endif %}
-                        </div>
 
-                        <div class="mb-3">
-                            <label for="{{ kiemke_form.tinh_trang.id_for_label }}" class="form-label form-label-sm">Tình trạng</label>
-                            {{ kiemke_form.tinh_trang|attr:"class:form-select form-select-sm" }}
-                            {% if kiemke_form.tinh_trang.errors %}
-                                <div class="text-danger">{{ kiemke_form.tinh_trang.errors }}</div>
-                            {% endif %}
-                        </div>
+                    <div class="mb-3">
+                        <label for="muc_dich" class="form-label fw-bold text-primary">Mục đích kiểm kê <span class="text-danger">*</span></label>
+                        <select class="form-select" id="muc_dich" name="muc_dich" required>
+                            <option value="">-- Chọn mục đích --</option>
+                            <option value="DINH_KY" {% if kiemke.muc_dich == 'DINH_KY' %}selected{% endif %}>Kiểm kê định kỳ</option>
+                            <option value="DOT_XUAT" {% if kiemke.muc_dich == 'DOT_XUAT' %}selected{% endif %}>Kiểm kê đột xuất</option>
+                            <option value="DAU_KY" {% if kiemke.muc_dich == 'DAU_KY' %}selected{% endif %}>Kiểm kê đầu kỳ</option>
+                            <option value="CUOI_KY" {% if kiemke.muc_dich == 'CUOI_KY' %}selected{% endif %}>Kiểm kê cuối kỳ</option>
+                            <option value="BAO_TRI" {% if kiemke.muc_dich == 'BAO_TRI' %}selected{% endif %}>Kiểm kê bảo trì</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="{{ kiemke_form.muc_dich.id_for_label }}" class="form-label form-label-sm">Mục đích kiểm kê*</label>
-                    {{ kiemke_form.muc_dich|attr:"class:form-control form-control-sm"|attr:"rows:2" }}
-                    {% if kiemke_form.muc_dich.errors %}
-                        <div class="text-danger">{{ kiemke_form.muc_dich.errors }}</div>
-                    {% endif %}
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="thoi_gian" class="form-label fw-bold text-primary">Thời gian kiểm kê <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" id="thoi_gian" name="thoi_gian" value="{{ kiemke.thoi_gian|date:'Y-m-d\TH:i' }}" required>
+                    </div>
+
+                    <!-- Trạng thái mặc định là Chờ duyệt, không hiển thị trong form -->
+                    <input type="hidden" id="tinh_trang" name="tinh_trang" value="CHO_DUYET">
                 </div>
+            </div>
 
-                <h5 class="mb-3">Chi tiết hàng hóa kiểm kê</h5>
+            <h5 class="mb-3 fw-bold text-primary">Chi tiết hàng hóa kiểm kê</h5>
 
+            <div class="mb-3">
+                <button type="button" class="btn btn-primary btn-sm" id="add-item-btn" data-bs-toggle="modal" data-bs-target="#addItemsModal">
+                    <i class="fas fa-plus"></i> Thêm hàng hóa
+                </button>
+            </div>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-hover" id="chitiet-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 5%">STT</th>
+                            <th style="width: 25%">Tên hàng hóa</th>
+                            <th style="width: 15%">Mã hàng</th>
+                            <th style="width: 15%">Số lượng hệ thống</th>
+                            <th style="width: 15%">Số lượng thực tế <span class="text-danger">*</span></th>
+                            <th style="width: 10%">Chênh lệch</th>
+                            <th style="width: 10%">Xử lý</th>
+                            <th style="width: 5%">Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chitiet-body">
+                        {% for chitiet in kiemke.chi_tiet_kiem_ke.all %}
+                        <tr class="hang-hoa-row" data-ma-hang="{{ chitiet.hang_hoa.ma_hang }}">
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ chitiet.hang_hoa.ten_hang }}</td>
+                            <td>{{ chitiet.hang_hoa.ma_hang }}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm so-luong-he-thong"
+                                    name="so_luong_he_thong_{{ forloop.counter0 }}" value="{{ chitiet.so_luong_he_thong }}" readonly>
+                                <input type="hidden" name="hang_hoa_{{ forloop.counter0 }}" value="{{ chitiet.hang_hoa.ma_hang }}">
+                                <input type="hidden" name="chi_tiet_id_{{ forloop.counter0 }}" value="{{ chitiet.id }}">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm so-luong-thuc-te"
+                                    name="so_luong_tai_kho_{{ forloop.counter0 }}" value="{{ chitiet.so_luong_tai_kho }}" min="0" required>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm chenh-lech {% if chitiet.chenh_lech > 0 %}chenh-lech-positive{% elif chitiet.chenh_lech < 0 %}chenh-lech-negative{% else %}chenh-lech-zero{% endif %}"
+                                    name="chenh_lech_{{ forloop.counter0 }}" value="{{ chitiet.chenh_lech }}" readonly>
+                            </td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm xu-ly"
+                                    name="xu_ly_{{ forloop.counter0 }}" value="{{ chitiet.xu_ly|default:'Không xử lý' }}" readonly>
+                                <input type="hidden" name="xu_ly_value_{{ forloop.counter0 }}" class="xu-ly-value" value="{{ chitiet.xu_ly|default:'' }}">
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-danger btn-sm delete-row-btn">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="empty-row">
+                            <td colspan="8" class="text-center text-muted">Chưa có hàng hóa nào được thêm vào phiếu kiểm kê.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <a href="{% url 'kiemke-detail' ma_kiemke=kiemke.ma_kiemke %}" class="btn btn-danger">
+                    <i class="fas fa-times me-1"></i> Hủy
+                </a>
+                <button type="submit" class="btn btn-success" id="save-button">
+                    <i class="fas fa-save me-1"></i> Lưu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="addItemsModal" tabindex="-1" aria-labelledby="addItemsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addItemsModalLabel">Thêm hàng hóa vào phiếu kiểm kê</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
                 <div class="mb-3">
-                    <button type="button" class="btn btn-primary btn-sm" id="add-item-system-btn" data-bs-toggle="modal" data-bs-target="#addItemsModal">
-                        <i class="fas fa-plus"></i> Thêm hàng hóa từ hệ thống
-                    </button>
+                    <input type="text" class="form-control" id="search-items" placeholder="Tìm kiếm hàng hóa...">
                 </div>
-
-                {{ chitiet_formset.management_form }}
-
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover table-sm" id="chitiet-table">
+                    <table class="table table-bordered table-sm" id="available-items-table">
                         <thead class="table-dark">
                             <tr>
-                                <th style="width: 5%">STT</th>
-                                <th style="width: 30%">Tên hàng hóa</th>
-                                <th style="width: 15%">Mã hàng</th>
-                                <th style="width: 15%">Số lượng hệ thống</th>
-                                <th style="width: 15%">Số lượng thực tế</th>
-                                <th style="width: 15%">Xử lý</th>
-                                <th style="width: 5%">Xóa</th>
+                                <th>Chọn</th>
+                                <th>Tên hàng hóa</th>
+                                <th>Mã hàng</th>
+                                <th>Đơn vị tính</th>
+                                <th>Số lượng hệ thống</th>
                             </tr>
                         </thead>
-                        <tbody id="chitiet-body">
-                            {% for form in chitiet_formset %}
-                                <tr class="hang-hoa-row">
-                                    <td class="row-number">{{ forloop.counter }}</td>
-                                    <td>
-                                        {% if form.instance.hang_hoa %}
-                                            {{ form.instance.hang_hoa.ten_hang }}
-                                        {% endif %}
-                                        {{ form.id }}
-                                        {{ form.hang_hoa }}
-                                    </td>
-                                    <td class="ma-hang-display">
-                                        {% if form.instance.hang_hoa %}
-                                            {{ form.instance.hang_hoa.ma_hang }}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ form.so_luong_he_thong|attr:"class:form-control form-control-sm so-luong-he-thong"|attr:"readonly:readonly" }}
-                                    </td>
-                                    <td>
-                                        {{ form.so_luong_tai_kho|attr:"class:form-control form-control-sm so-luong-thuc-te" }}
-                                    </td>
-                                    <td>
-                                        {{ form.xu_ly|attr:"class:form-control form-control-sm xu-ly" }}
-                                    </td>
-                                    <td class="text-center">
-                                        {% if chitiet_formset.can_delete %}
-                                        <div class="form-check">
-                                            {{ form.DELETE|attr:"class:form-check-input" }}
-                                            <label for="{{ form.DELETE.id_for_label }}" class="delete-row">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </label>
-                                        </div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
+                        <tbody>
+                            {% for hh in all_hanghoa %}
+                            <tr class="item-row">
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary select-item-btn"
+                                        data-ma-hang="{{ hh.ma_hang }}"
+                                        data-ten-hang="{{ hh.ten_hang }}"
+                                        data-don-vi-tinh="{{ hh.don_vi_tinh }}"
+                                        data-so-luong="{{ hh.so_luong_he_thong }}">
+                                        Chọn
+                                    </button>
+                                </td>
+                                <td class="item-name">{{ hh.ten_hang }}</td>
+                                <td class="item-code">{{ hh.ma_hang }}</td>
+                                <td>{{ hh.don_vi_tinh }}</td>
+                                <td>{{ hh.so_luong_he_thong }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">Không có hàng hóa nào trong hệ thống.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-
-                <div class="d-flex gap-2">
-                    <a href="{% url 'kiemke-detail' ma_kiemke=kiemke.ma_kiemke %}" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-times me-1"></i> Hủy
-                    </a>
-                    <button type="submit" class="btn btn-primary btn-sm" id="save-button">
-                        <i class="fas fa-save me-1"></i> Lưu
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="modal fade" id="addItemsModal" tabindex="-1" aria-labelledby="addItemsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="addItemsModalLabel">Thêm hàng hóa từ hệ thống</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm" id="available-items-table">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Chọn</th>
-                                    <th>Tên hàng hóa</th>
-                                    <th>Mã hàng</th>
-                                    <th>Đơn vị tính</th>
-                                    <th>Số lượng hệ thống</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for hh in all_hanghoa %}
-                                <tr>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary select-item-btn"
-                                            data-ma-hang="{{ hh.ma_hang }}"
-                                            data-ten-hang="{{ hh.ten_hang }}"
-                                            data-don-vi-tinh="{{ hh.don_vi_tinh }}"
-                                            data-so-luong="{{ hh.so_luong_he_thong }}">
-                                            Chọn
-                                        </button>
-                                    </td>
-                                    <td>{{ hh.ten_hang }}</td>
-                                    <td>{{ hh.ma_hang }}</td>
-                                    <td>{{ hh.don_vi_tinh }}</td>
-                                    <td>{{ hh.so_luong_he_thong }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="5" class="text-center">Không có hàng hóa nào trong hệ thống.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('kiemkeForm');
     const saveButton = document.getElementById('save-button');
-    const formsetPrefix = "{{ chitiet_formset.prefix }}";
-    const totalForms = document.getElementById(`id_${formsetPrefix}-TOTAL_FORMS`);
     const chitietBody = document.getElementById('chitiet-body');
+    const emptyRow = document.getElementById('empty-row');
     const addItemsModal = new bootstrap.Modal(document.getElementById('addItemsModal'));
     const availableItemsTable = document.getElementById('available-items-table');
+    const searchInput = document.getElementById('search-items');
+    let itemCount = {{ kiemke.chi_tiet_kiem_ke.count }};
+
+    // Tìm kiếm hàng hóa trong modal
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = availableItemsTable.querySelectorAll('tbody tr.item-row');
+
+            rows.forEach(row => {
+                const itemName = row.querySelector('.item-name').textContent.toLowerCase();
+                const itemCode = row.querySelector('.item-code').textContent.toLowerCase();
+
+                if (itemName.includes(searchTerm) || itemCode.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
 
     // Hàm hiển thị thông báo
     function showNotification(message, type = 'success') {
@@ -261,76 +262,112 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Hàm cập nhật số thứ tự
     function updateRowNumbers() {
-        const rows = chitietBody.querySelectorAll('tr');
+        const rows = chitietBody.querySelectorAll('tr:not(#empty-row)');
         rows.forEach((row, index) => {
-            row.querySelector('.row-number').textContent = index + 1;
+            row.querySelector('td:first-child').textContent = index + 1;
         });
     }
 
-    // Hàm thêm hàng mới từ hệ thống
+    // Hàm tính chênh lệch
+    function calculateDifference(row) {
+        const soLuongHeThong = parseInt(row.querySelector('.so-luong-he-thong').value) || 0;
+        const soLuongThucTe = parseInt(row.querySelector('.so-luong-thuc-te').value) || 0;
+        const chenhLech = soLuongThucTe - soLuongHeThong;
+
+        const chenhLechElement = row.querySelector('.chenh-lech');
+        chenhLechElement.value = chenhLech;
+
+        // Thêm màu sắc cho chênh lệch
+        chenhLechElement.classList.remove('chenh-lech-positive', 'chenh-lech-negative', 'chenh-lech-zero');
+
+        // Tự động đặt giá trị xử lý dựa trên chênh lệch
+        const xuLyElement = row.querySelector('.xu-ly');
+        const xuLyValueElement = row.querySelector('.xu-ly-value');
+
+        if (chenhLech > 0) {
+            chenhLechElement.classList.add('chenh-lech-positive');
+            xuLyElement.value = "Thêm phiếu nhập kho";
+            xuLyValueElement.value = "NHAP_BO_SUNG";
+        } else if (chenhLech < 0) {
+            chenhLechElement.classList.add('chenh-lech-negative');
+            xuLyElement.value = "Thêm phiếu xuất kho";
+            xuLyValueElement.value = "XUAT_HUY";
+        } else {
+            chenhLechElement.classList.add('chenh-lech-zero');
+            xuLyElement.value = "Không xử lý";
+            xuLyValueElement.value = "";
+        }
+    }
+
+    // Hàm thêm hàng mới
     function addNewItemRow(hangHoa) {
-        const formCount = parseInt(totalForms.value);
-        const newRowId = `row-${formCount}`;
+        // Ẩn dòng trống nếu đang hiển thị
+        if (emptyRow && emptyRow.style.display !== 'none') {
+            emptyRow.style.display = 'none';
+        }
 
         const newRow = document.createElement('tr');
         newRow.classList.add('hang-hoa-row');
-        newRow.id = newRowId;
+        newRow.dataset.maHang = hangHoa.ma_hang;
 
         newRow.innerHTML = `
-            <td class="row-number">${formCount + 1}</td>
-            <td>
-                <span class="math-inline">\{hangHoa\.ten\_hang\}
-<input type\="hidden" name\="</span>{formsetPrefix}-<span class="math-inline">\{formCount\}\-hang\_hoa" value\="</span>{hangHoa.ma_hang}">
-                <input type="hidden" name="<span class="math-inline">\{formsetPrefix\}\-</span>{formCount}-id" id="id_${formsetPrefix}-<span class="math-inline">\{formCount\}\-id"\>
-</td\>
-<td class\="ma\-hang\-display"\></span>{hangHoa.ma_hang}</td>
+            <td>${chitietBody.querySelectorAll('tr:not(#empty-row)').length + 1}</td>
+            <td>${hangHoa.ten_hang}</td>
+            <td>${hangHoa.ma_hang}</td>
             <td>
                 <input type="number" class="form-control form-control-sm so-luong-he-thong"
-                    name="<span class="math-inline">\{formsetPrefix\}\-</span>{formCount}-so_luong_he_thong"
-                    value="<span class="math-inline">\{hangHoa\.so\_luong\}" readonly\>
-</td\>
-<td\>
-<input type\="number" class\="form\-control form\-control\-sm so\-luong\-thuc\-te"
-name\="</span>{formsetPrefix}-<span class="math-inline">\{formCount\}\-so\_luong\_tai\_kho"
-value\="</span>{hangHoa.so_luong}" min="0">
+                    name="so_luong_he_thong_${itemCount}" value="${hangHoa.so_luong}" readonly>
+                <input type="hidden" name="hang_hoa_${itemCount}" value="${hangHoa.ma_hang}">
+                <input type="hidden" name="chi_tiet_id_${itemCount}" value="">
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm so-luong-thuc-te"
+                    name="so_luong_tai_kho_${itemCount}" value="${hangHoa.so_luong}" min="0" required>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm chenh-lech"
+                    name="chenh_lech_${itemCount}" value="0" readonly>
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm xu-ly"
-                    name="<span class="math-inline">\{formsetPrefix\}\-</span>{formCount}-xu_ly" value="">
+                    name="xu_ly_${itemCount}" value="Không xử lý" readonly>
+                <input type="hidden" name="xu_ly_value_${itemCount}" class="xu-ly-value" value="">
             </td>
             <td class="text-center">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox"
-                        name="<span class="math-inline">\{formsetPrefix\}\-</span>{formCount}-DELETE"
-                        id="id_${formsetPrefix}-<span class="math-inline">\{formCount\}\-DELETE"\>
-<label for\="id\_</span>{formsetPrefix}-${formCount}-DELETE" class="delete-row">
-                        <i class="fas fa-trash-alt"></i>
-                    </label>
-                </div>
+                <button type="button" class="btn btn-danger btn-sm delete-row-btn">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             </td>
         `;
 
         chitietBody.appendChild(newRow);
-        totalForms.value = formCount + 1;
-        updateRowNumbers();
+        itemCount++;
+
+        // Thiết lập sự kiện cho hàng mới
         setupRowEvents(newRow);
     }
 
     // Thiết lập sự kiện cho hàng
     function setupRowEvents(row) {
         // Sự kiện xóa hàng
-        const deleteCheckbox = row.querySelector('input[type="checkbox"]');
-        const deleteLabel = row.querySelector('.delete-row');
+        const deleteButton = row.querySelector('.delete-row-btn');
+        if (deleteButton) {
+            deleteButton.addEventListener('click', function() {
+                row.remove();
+                updateRowNumbers();
 
-        if (deleteLabel) {
-            deleteLabel.addEventListener('click', function () {
-                if (chitietBody.querySelectorAll('tr').length > 1) {
-                    deleteCheckbox.checked = true;
-                    row.style.display = 'none';
-                    updateRowNumbers();
-                } else {
-                    alert('Phải có ít nhất một hàng hóa!');
+                // Hiển thị lại dòng trống nếu không còn hàng nào
+                if (chitietBody.querySelectorAll('tr:not(#empty-row)').length === 0 && emptyRow) {
+                    emptyRow.style.display = '';
                 }
+            });
+        }
+
+        // Sự kiện tính chênh lệch khi thay đổi số lượng thực tế
+        const soLuongThucTeInput = row.querySelector('.so-luong-thuc-te');
+        if (soLuongThucTeInput) {
+            soLuongThucTeInput.addEventListener('input', function() {
+                calculateDifference(row);
             });
         }
     }
@@ -342,24 +379,15 @@ value\="</span>{hangHoa.so_luong}" min="0">
 
     // Sự kiện khi chọn hàng từ modal
     availableItemsTable.querySelectorAll('.select-item-btn').forEach(button => {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function() {
             const maHang = this.getAttribute('data-ma-hang');
             const tenHang = this.getAttribute('data-ten-hang');
             const donViTinh = this.getAttribute('data-don-vi-tinh');
             const soLuong = this.getAttribute('data-so-luong');
 
             // Kiểm tra xem hàng đã có trong danh sách chưa
-            const existingRows = chitietBody.querySelectorAll('tr');
-            let isExist = false;
-
-            existingRows.forEach(row => {
-                const maHangInput = row.querySelector('input[name*="-hang_hoa"]');
-                if (maHangInput && maHangInput.value === maHang) {
-                    isExist = true;
-                }
-            });
-
-            if (isExist) {
+            const existingRow = chitietBody.querySelector(`tr[data-ma-hang="${maHang}"]`);
+            if (existingRow) {
                 showNotification('Hàng hóa này đã có trong phiếu kiểm kê', 'warning');
                 return;
             }
@@ -375,10 +403,10 @@ value\="</span>{hangHoa.so_luong}" min="0">
         });
     });
 
-    // Ngăn chặn hành vi mặc định của form và hiển thị thông báo khi submit
-    form.addEventListener('submit', function (event) {
+    // Xử lý khi submit form
+    form.addEventListener('submit', function(event) {
         // Kiểm tra số lượng hàng hóa
-        const rows = chitietBody.querySelectorAll('tr:visible');
+        const rows = chitietBody.querySelectorAll('tr:not(#empty-row)');
         if (rows.length === 0) {
             event.preventDefault();
             showNotification('Vui lòng thêm ít nhất một hàng hóa vào phiếu kiểm kê.', 'danger');
@@ -386,24 +414,30 @@ value\="</span>{hangHoa.so_luong}" min="0">
         }
 
         // Kiểm tra các trường bắt buộc
-        const requiredFields = form.querySelectorAll('[required]');
         let isValid = true;
 
-        requiredFields.forEach(field => {
+        // Kiểm tra các trường bắt buộc trong form chính
+        const mainFormRequiredFields = form.querySelectorAll('select[required], input[required]');
+        mainFormRequiredFields.forEach(field => {
             if (!field.value.trim()) {
                 isValid = false;
                 field.classList.add('is-invalid');
-                     const invalidFeedback = document.createElement('div');
-                invalidFeedback.classList.add('invalid-feedback');
-                invalidFeedback.textContent = 'Trường này là bắt buộc.';
-                field.parentNode.appendChild(invalidFeedback);
             } else {
                 field.classList.remove('is-invalid');
-                const feedback = field.parentNode.querySelector('.invalid-feedback');
-                if (feedback) {
-                    feedback.remove();
-                }
             }
+        });
+
+        // Kiểm tra các trường bắt buộc trong các hàng hóa
+        rows.forEach(row => {
+            const requiredFields = row.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('is-invalid');
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
         });
 
         if (!isValid) {
@@ -412,9 +446,10 @@ value\="</span>{hangHoa.so_luong}" min="0">
             return;
         }
 
-        // Nếu mọi thứ hợp lệ, form sẽ được submit
+        // Nếu tất cả đều hợp lệ, cho phép form submit bình thường
         showNotification('Đang cập nhật phiếu kiểm kê...', 'info');
-        // form.submit(); // Bỏ comment dòng này để submit form thật
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang lưu...';
+        saveButton.disabled = true;
     });
 });
 </script>

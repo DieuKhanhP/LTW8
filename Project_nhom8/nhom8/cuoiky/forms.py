@@ -2,8 +2,8 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import NhapKho, ChiTietNhap, HangHoa, CustomUser, XuatKho, ChiTietXuat, KiemKe, ChiTietKiemKe
 from .models import DON_VI_TINH_CHOICES, TINH_TRANG_TONKHO_CHOICES, NHOM_HANG_CHOICES
-
-
+from django.contrib.auth import get_user_model
+User = get_user_model()
 class ProfileForm(forms.ModelForm):
     """Form cho phép người dùng cập nhật thông tin cá nhân."""
 
@@ -294,8 +294,6 @@ class ChiTietNhapForm(forms.ModelForm):
 
 from django.forms import BaseInlineFormSet
 
-from django.forms import BaseInlineFormSet
-
 class BaseChiTietNhapFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
@@ -331,90 +329,42 @@ ChiTietNhapFormSet = forms.inlineformset_factory(
     validate_max=True
 )
 
-
-
-
 class XuatKhoForm(forms.ModelForm):
     class Meta:
         model = XuatKho
-        fields = ['ma_xuat', 'nguon_nhan', 'thoi_gian', 'sdt', 'diachi', 'ly_do', 'url_hop_dong', 'url_so_cu']
+        fields = [
+            'ma_xuat', 'nguon_nhan', 'thoi_gian', 'kho', 'sdt', 'diachi',
+            'ly_do', 'ly_do_khac', 'url_hop_dong', 'url_so_cu'
+        ]
         widgets = {
-            'ma_xuat': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Để trống để tự động tạo'}),
-            'nguon_nhan': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
-            'thoi_gian': forms.DateTimeInput(
-                attrs={'class': 'form-control', 'type': 'datetime-local', 'required': True}),
+            'ma_xuat': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'nguon_nhan': forms.Select(attrs={'class': 'form-select'}),
+            'thoi_gian': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+            'kho': forms.Select(attrs={'class': 'form-select'}),
             'sdt': forms.TextInput(attrs={'class': 'form-control'}),
             'diachi': forms.TextInput(attrs={'class': 'form-control'}),
-            'ly_do': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'ly_do': forms.Select(attrs={'class': 'form-select'}),
+            'ly_do_khac': forms.TextInput(attrs={'class': 'form-control'}),
             'url_hop_dong': forms.FileInput(attrs={'class': 'form-control'}),
             'url_so_cu': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Đánh dấu các trường bắt buộc
-        self.fields['nguon_nhan'].required = True
-        self.fields['thoi_gian'].required = True
-
-
 class ChiTietXuatForm(forms.ModelForm):
     class Meta:
         model = ChiTietXuat
-        fields = ['ma_hang', 'don_gia_xuat', 'so_luong_xuat', 'chiet_khau']
+        fields = ['ma_xuat', 'ma_hang', 'don_gia_xuat', 'so_luong_xuat', 'chiet_khau']
         widgets = {
-            'ma_hang': forms.Select(attrs={
-                'class': 'form-select hang-hoa-select',
-                'data-live-search': 'true'
-            }),
-            'don_gia_xuat': forms.NumberInput(attrs={
-                'class': 'form-control don-gia',
-                'min': '0',
-                'step': '1000'
-            }),
-            'so_luong_xuat': forms.NumberInput(attrs={
-                'class': 'form-control so-luong',
-                'min': '1'
-            }),
-            'chiet_khau': forms.NumberInput(attrs={
-                'class': 'form-control chiet-khau',
-                'min': '0',
-                'max': '100',
-                'step': '0.1'
-            }),
+            'ma_hang': forms.Select(attrs={'class': 'form-select'}),
+            'don_gia_xuat': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 1000}),
+            'so_luong_xuat': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'chiet_khau': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 100, 'step': 0.1}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['ma_hang'].queryset = HangHoa.objects.filter(so_luong_he_thong__gt=0)
-        self.fields['ma_hang'].label_from_instance = lambda obj: f"{obj.ten_hang} ({obj.ma_hang})"
-
-    def clean(self):
-        cleaned_data = super().clean()
-        ma_hang = cleaned_data.get('ma_hang')
-        don_gia_xuat = cleaned_data.get('don_gia_xuat')
-        so_luong_xuat = cleaned_data.get('so_luong_xuat')
-
-        # Nếu đơn giá xuất không được cung cấp, sử dụng đơn giá bán từ hàng hóa
-        if ma_hang and not don_gia_xuat and ma_hang.don_gia_ban:
-            cleaned_data['don_gia_xuat'] = ma_hang.don_gia_ban
-
-        # Kiểm tra số lượng xuất không vượt quá tồn kho
-        if ma_hang and so_luong_xuat and so_luong_xuat > ma_hang.so_luong_he_thong:
-            raise forms.ValidationError(
-                f"Số lượng xuất ({so_luong_xuat}) vượt quá tồn kho ({ma_hang.so_luong_he_thong})")
-
-        return cleaned_data
-
-
-# Tạo formset cho chi tiết xuất kho
-ChiTietXuatFormSet = forms.inlineformset_factory(
-    XuatKho,
-    ChiTietXuat,
+ChiTietXuatFormSet = inlineformset_factory(
+    XuatKho, ChiTietXuat,
     form=ChiTietXuatForm,
-    extra=1,
+    extra=0,
     can_delete=True,
-    min_num=1,
-    validate_min=True
 )
 
 
@@ -476,3 +426,5 @@ ChiTietKiemKeFormSetUpdate = forms.inlineformset_factory(
     extra=0,
     can_delete=True
 )
+
+

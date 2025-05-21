@@ -22,7 +22,6 @@
                 <option value="">-- Tất cả --</option>
                 <option value="CHO_DUYET" {% if request.GET.tinh_trang == 'CHO_DUYET' %}selected{% endif %}>Chờ duyệt</option>
                 <option value="DA_DUYET" {% if request.GET.tinh_trang == 'DA_DUYET' %}selected{% endif %}>Đã duyệt</option>
-                <option value="DA_NHAP" {% if request.GET.tinh_trang == 'DA_NHAP' %}selected{% endif %}>Đã nhập</option>
                 <option value="TU_CHOI" {% if request.GET.tinh_trang == 'TU_CHOI' %}selected{% endif %}>Từ chối</option>
             </select>
         </div>
