@@ -603,6 +603,7 @@ class ChiTietKiemKe(models.Model):
         related_name='chi_tiet_kiem_ke',
         verbose_name="Hàng hóa"
     )
+    kho = models.ForeignKey(Kho, on_delete=models.CASCADE, verbose_name="Kho kiểm kê")
     so_luong_he_thong = models.PositiveIntegerField(verbose_name="Số lượng hệ thống (lúc KK)")
     so_luong_tai_kho = models.PositiveIntegerField(verbose_name="Số lượng thực tế")
     chenh_lech = models.IntegerField(verbose_name="Chênh lệch", editable=False)
@@ -610,7 +611,11 @@ class ChiTietKiemKe(models.Model):
 
     def clean(self):
         if self.so_luong_he_thong is None:
-            self.so_luong_he_thong = self.hang_hoa.so_luong_he_thong
+            try:
+                ton_kho = TonKhoTheoKho.objects.get(hang_hoa=self.hang_hoa, kho=self.kho)
+                self.so_luong_he_thong = ton_kho.so_luong
+            except TonKhoTheoKho.DoesNotExist:
+                self.so_luong_he_thong = 0
 
 
     def __str__(self):
@@ -686,3 +691,10 @@ def update_tinh_trang_tonkho(sender, instance, **kwargs):
         instance.tinh_trang = new_status
         if not kwargs.get('raw', False):  # Tránh save khi load fixtures
             instance.save(update_fields=['tinh_trang'])
+
+from django.db.models import Sum
+
+def cap_nhat_so_luong_he_thong(hang_hoa):
+    tong_so_luong = TonKhoTheoKho.objects.filter(hang_hoa=hang_hoa).aggregate(Sum('so_luong'))['so_luong__sum'] or 0
+    hang_hoa.so_luong_he_thong = tong_so_luong
+    hang_hoa.save(update_fields=['so_luong_he_thong'])

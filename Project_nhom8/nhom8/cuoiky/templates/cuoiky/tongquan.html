@@ -1,11 +1,14 @@
 {% extends 'cuoiky/base.html' %}
 {% load static %}
+{% load humanize %}
+
 
 {% block title %}Tổng quan - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Tổng quan{% endblock %}
+{% block page_title %}TỔNG QUAN{% endblock %}
 
 {% block content %}
+
     <style>
         /* CSS scoped cho Chart.js */
         #pieChart {
@@ -16,18 +19,98 @@
             position: relative;
             width: 100%;
         }
-        /* Sử dụng font Inter cho trang này */
-        .dashboard-content {
-            font-family: 'Inter', sans-serif;
-        }
     </style>
+    <form method="get" action="{% url 'tongquan' %}" class="tw-mb-10">
+        <div id="alert-container" class="tw-my-3"></div>
+    <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 lg:tw-grid-cols-5 tw-gap-5">
 
-    <div class="dashboard-content">
-        <h1 class="tw-text-2xl tw-font-semibold tw-text-gray-800 tw-mb-8 tw-text-center">Tổng Quan Hệ Thống Quản Lý Kho</h1>
+        <!-- Năm -->
+        <div>
+            <label for="year" class="tw-block tw-text-sm tw-font-semibold tw-text-gray-700 mb-1">Năm</label>
+            <select name="year" id="year" class="tw-w-full tw-rounded-lg tw-border tw-border-gray-300 tw-shadow-sm tw-px-3 tw-py-2 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-blue-500">
+                <option value="">Tất cả</option>
+                {% for y in years %}
+                    <option value="{{ y }}" {% if request.GET.year == y|stringformat:"d" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Tháng -->
+        <div>
+            <label for="month" class="tw-block tw-text-sm tw-font-semibold tw-text-gray-700 mb-1">Tháng</label>
+            <select name="month" id="month" class="tw-w-full tw-rounded-lg tw-border tw-border-gray-300 tw-shadow-sm tw-px-3 tw-py-2 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-blue-500">
+                <option value="">Tất cả</option>
+                {% for i in "x"|rjust:"12" %}
+                    <option value="{{ forloop.counter }}" {% if request.GET.month == forloop.counter|stringformat:"d" %}selected{% endif %}>Tháng {{ forloop.counter }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Quý -->
+        <div>
+            <label for="quarter" class="tw-block tw-text-sm tw-font-semibold tw-text-gray-700 mb-1">Quý</label>
+            <select name="quarter" id="quarter" class="tw-w-full tw-rounded-lg tw-border tw-border-gray-300 tw-shadow-sm tw-px-3 tw-py-2 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-blue-500">
+                <option value="">Tất cả</option>
+                {% for q in "1234" %}
+                    <option value="{{ q }}" {% if request.GET.quarter == q %}selected{% endif %}>Quý {{ q }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Nút lọc -->
+        <div class="tw-flex tw-flex-col tw-justify-end">
+            <button type="submit"
+                class="tw-inline-flex tw-items-center tw-justify-center tw-px-5 tw-py-2.5 tw-text-sm tw-font-semibold tw-text-white tw-bg-gradient-to-r tw-from-blue-500 tw-to-indigo-600 tw-rounded-lg hover:tw-from-indigo-500 hover:tw-to-blue-600 hover:tw-shadow-lg transition duration-300">
+                <svg class="tw-h-5 tw-w-5 tw-mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2l-6 7v5l-4 2v-7L3 6V4z" />
+                </svg>
+                Lọc dữ liệu
+            </button>
+        </div>
+
+        <!-- Nút in báo cáo -->
+        <div class="tw-flex tw-flex-col tw-justify-end">
+           <button type="button" id="btn-export"
+                    class="tw-inline-flex tw-items-center tw-justify-center tw-px-5 tw-py-2.5 tw-text-sm tw-font-semibold tw-text-white tw-bg-gradient-to-r tw-from-green-500 tw-to-emerald-600 tw-rounded-lg hover:tw-from-emerald-500 hover:tw-to-green-600 hover:tw-shadow-lg transition duration-300">
+                <svg class="tw-h-5 tw-w-5 tw-mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17H6a2 2 0 01-2-2V7a2 2 0 012-2h11a2 2 0 012 2v8a2 2 0 01-2 2zM8 21h8m-4-4v4" />
+                </svg>
+                In báo cáo
+            </button>
+        </div>
+
+
+    </div>
+</form>
+    <div class="tw-flex tw-justify-center tw-my-6">
+    <div class="tw-inline-flex tw-items-center tw-bg-gradient-to-r tw-from-blue-100 tw-to-blue-200 tw-text-blue-900 tw-text-base md:tw-text-lg tw-font-semibold tw-px-6 tw-py-3 tw-rounded-xl tw-shadow">
+        <svg class="tw-w-5 tw-h-5 tw-mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        Dữ liệu hiển thị cho:
+        <span class="tw-ml-2 tw-font-bold">
+            {% if request.GET.month %}
+                Tháng {{ request.GET.month }},
+            {% elif request.GET.quarter %}
+                Quý {{ request.GET.quarter }},
+            {% endif %}
+            {% if request.GET.year %}
+                Năm {{ request.GET.year }}
+            {% else %}
+                Tất cả các năm
+            {% endif %}
+        </span>
+    </div>
+</div>
+
+
+
 
         <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-8">
             <div class="tw-bg-white tw-shadow-md tw-rounded-lg tw-p-6">
-                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">Báo cáo Nhập - Xuất Kho</h2>
+                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">BÁO CÁO NHẬP - XUẤT KHO</h2>
                 <div class="tw-flex tw-flex-col md:tw-flex-row tw-items-center tw-gap-6">
                     <div class="tw-w-full md:tw-w-1/2">
                         <canvas id="pieChart" width="200" height="200"></canvas>
@@ -52,7 +135,7 @@
             </div>
 
             <div class="tw-bg-white tw-shadow-md tw-rounded-lg tw-p-6">
-                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">Thống kê Tình trạng hàng hóa</h2>
+                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ TÌNH TRẠNG HÀNG HÓA</h2>
                 <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-4">
                     <div class="tw-bg-green-100 tw-border-l-4 tw-border-green-500 tw-text-green-700 tw-p-4 tw-rounded">
                         <p class="tw-text-sm tw-font-medium">Còn hàng</p>
@@ -76,7 +159,7 @@
 
         <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-3 tw-gap-8 tw-mt-8">
             <div class="tw-bg-white tw-shadow-md tw-rounded-lg tw-p-6">
-                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">Thống kê Nhập kho</h2>
+                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ NHẬP KHO</h2>
                 <div class="tw-space-y-3">
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu nhập trong tháng:</span>
@@ -94,7 +177,7 @@
             </div>
 
             <div class="tw-bg-white tw-shadow-md tw-rounded-lg tw-p-6">
-                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">Thống kê Xuất kho</h2>
+                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ XUẤT KHO</h2>
                 <div class="tw-space-y-3">
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu xuất trong tháng:</span>
@@ -102,7 +185,7 @@
                     </div>
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Tổng giá trị xuất trong tháng:</span>
-                        <span id="gia-tri-xuat-thang" class="tw-text-red-500 tw-font-semibold">{{ gia_tri_xuat_thang }}</span>
+                        <span id="gia-tri-xuat-thang" class="tw-text-red-500 tw-font-semibold">{{ gia_tri_xuat_thang|intcomma }} </span>
                     </div>
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu xuất chờ duyệt:</span>
@@ -112,7 +195,7 @@
             </div>
 
             <div class="tw-bg-white tw-shadow-md tw-rounded-lg tw-p-6">
-                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">Thống kê Kiểm kê</h2>
+                <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ KIỂM KÊ</h2>
                 <div class="tw-space-y-3">
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu kiểm kê trong tháng:</span>
@@ -143,6 +226,9 @@
         const phieuXuatChoDuyetElement = document.getElementById('phieu-xuat-cho-duyet');
         const phieuKiemKeThangElement = document.getElementById('phieu-kiem-ke-thang');
         const phieuKiemKeChoDuyetElement = document.getElementById('phieu-kiem-ke-cho-duyet');
+        const monthSelect = document.getElementById("month");
+        const quarterSelect = document.getElementById("quarter");
+
 
         // Khởi tạo biểu đồ tròn
         const ctx = document.getElementById('pieChart').getContext('2d');
@@ -260,16 +346,37 @@
                     });
                 }
             }, 100);
+            function toggleSelects() {
+            if (monthSelect.value) {
+                quarterSelect.disabled = true;
+                quarterSelect.classList.add("tw-opacity-50", "tw-cursor-not-allowed");
+            } else {
+                quarterSelect.disabled = false;
+                quarterSelect.classList.remove("tw-opacity-50", "tw-cursor-not-allowed");
+            }
+
+            if (quarterSelect.value) {
+                monthSelect.disabled = true;
+                monthSelect.classList.add("tw-opacity-50", "tw-cursor-not-allowed");
+            } else {
+                monthSelect.disabled = false;
+                monthSelect.classList.remove("tw-opacity-50", "tw-cursor-not-allowed");
+            }
+        }
+
+        monthSelect.addEventListener("change", toggleSelects);
+        quarterSelect.addEventListener("change", toggleSelects);
+
+        toggleSelects(); // Khởi động lúc đầu
         });
+
     </script>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Định dạng tiền tệ
-        const giaTriNhapThangElement = document.getElementById('gia-tri-nhap-thang');
-        const giaTriXuatThangElement = document.getElementById('gia-tri-xuat-thang');
+
 
         if (giaTriNhapThangElement) {
             const giaTriNhap = parseFloat(giaTriNhapThangElement.textContent);
@@ -281,82 +388,79 @@
             giaTriXuatThangElement.textContent = giaTriXuat.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
         }
 
-        // Khởi tạo biểu đồ tròn
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        const pieChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Nhập', 'Xuất'],
-                datasets: [{
-                    label: 'Tỷ lệ Nhập - Xuất',
-                    data: [{{ total_import }}, {{ total_export }}],
-                    backgroundColor: [
-                        'rgba(56, 189, 248, 0.7)',
-                        'rgba(220, 38, 38, 0.7)',
-                    ],
-                    borderColor: [
-                        'rgba(56, 189, 248, 1)',
-                        'rgba(220, 38, 38, 1)',
-                    ],
-                    borderWidth: 1,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 14,
-                            },
-                            color: '#6b7280',
-                        },
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed !== null) {
-                                    label += context.parsed + ' đơn vị';
-                                }
-                                return label;
-                            },
-                        },
-                        backgroundColor: '#fff',
-                        titleColor: '#6b7280',
-                        bodyColor: '#374151',
-                        borderColor: '#e5e7eb',
-                        borderWidth: 1,
-                        cornerRadius: 4,
-                        displayColors: true,
-                    },
-                },
-            },
-        });
 
-        // Đảm bảo menu được mở khi cần thiết
-        if (typeof openXuatNhapMenu === 'function') {
-            // Thêm nút để mở menu Xuất-nhập nếu cần
-            var menuHelper = document.createElement('div');
-            menuHelper.className = 'position-fixed bottom-0 start-0 m-4';
-            menuHelper.style.zIndex = '1000';
-            menuHelper.innerHTML = `
-                <button id="openXuatNhapMenuBtn" class="btn btn-primary btn-sm">
-                    <i class="fas fa-exchange-alt me-1"></i> Mở menu Xuất-nhập
-                </button>
-            `;
-            document.body.appendChild(menuHelper);
-
-            // Thêm sự kiện click cho nút
-            document.getElementById('openXuatNhapMenuBtn').addEventListener('click', function() {
-                openXuatNhapMenu();
-            });
-        }
     });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btnExport = document.getElementById("btn-export");
+
+    btnExport.addEventListener("click", function () {
+        fetch("{% url 'export_baocao_doc' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken"),
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        })
+        .then(async (response) => {
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                if (data.success) {
+                    showAlert("success", data.message);
+                } else {
+                    showAlert("danger", data.error || "Không thể in báo cáo.");
+                }
+            } else {
+                const text = await response.text();
+                throw new Error("Server không trả về JSON: " + text.substring(0, 100));
+            }
+        })
+        .catch(error => {
+            showAlert("danger", "Lỗi: " + error.message);
+        });
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+   function showAlert(type, message) {
+    const alertContainer = document.getElementById("alert-container");
+    if (!alertContainer) return;
+
+    const div = document.createElement("div");
+    div.className = `alert alert-${type} alert-dismissible fade show`;
+    div.role = "alert";
+    div.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    alertContainer.innerHTML = ""; // clear các cảnh báo trước
+    alertContainer.appendChild(div);
+
+    // Tự động ẩn sau 3 giây
+    setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(div);
+        bsAlert.close();
+    }, 3000);
+}
+
+});
+</script>
+
+
+
 {% endblock %}
+

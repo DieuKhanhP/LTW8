@@ -202,8 +202,13 @@
                                 <a class="nav-link {% if request.resolver_match.url_name == 'hanghoa-list' %}active{% endif %}"
                                    href="{{ hanghoa_url }}"></i>Hàng hóa</a>
                             </li>
-                             <li class="nav-item"><a class="nav-link" href="#">Nhóm hàng</a></li>
-                             <li class="nav-item"><a class="nav-link" href="#">Đơn vị tính</a></li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.resolver_match.url_name == 'khachhang-list' %}active{% endif %}"
+                                   href="{% url 'khachhang-list' %}">
+                                   <i class="fas fa-user fa-fw me-2"></i>Khách hàng
+                                </a>
+                            </li>
+
                         </ul>
                     </div>
                     {% endwith %}

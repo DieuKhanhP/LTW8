@@ -3,7 +3,7 @@
 
 {% block title %}Danh sách Phiếu nhập kho - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Danh sách Phiếu nhập kho{% endblock %}
+{% block page_title %}DANH SÁCH PHIẾU NHẬP KHO{% endblock %}
 
 {% block content %}
 <form method="get" action="{% url 'nhapkho-list' %}" class="mb-3 p-3 bg-light border rounded">
@@ -176,50 +176,53 @@
             });
         });
 
-        confirmDeleteBtn.addEventListener('click', function() {
-            if (maNhapToDelete) {
-                fetch(`/app/nhapkho/${maNhapToDelete}/xoa/`, { // URL xóa
-                    method: 'POST', // Hoặc 'DELETE' tùy theo view của bạn
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({}) // Có thể gửi thêm dữ liệu nếu cần
-                })
-                .then(response => {
-                    if (response.ok) {
-                        // Xóa hàng khỏi bảng sau khi xóa thành công
-                        const rowToDelete = document.querySelector(`[data-ma-nhap="${maNhapToDelete}"]`).closest('tr');
-                        if (rowToDelete) {
-                            rowToDelete.remove();
-                        }
-                        // Hiển thị thông báo thành công
-                        const notificationDiv = document.createElement('div');
-                        notificationDiv.classList.add('alert', 'alert-success', 'alert-dismissible', 'fade', 'show', 'mb-3');
-                        notificationDiv.setAttribute('role', 'alert');
-                        notificationDiv.innerHTML = `Phiếu nhập kho ${maNhapToDelete} đã được xóa thành công. <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                        document.querySelector('.table-responsive').prepend(notificationDiv);
-                    } else {
-                        // Hiển thị thông báo lỗi
-                        const errorDiv = document.createElement('div');
-                        errorDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show', 'mb-3');
-                        errorDiv.setAttribute('role', 'alert');
-                        errorDiv.innerHTML = `Có lỗi xảy ra khi xóa phiếu nhập kho ${maNhapToDelete}. <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                        document.querySelector('.table-responsive').prepend(errorDiv);
-                        console.error('Lỗi xóa:', response);
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi mạng:', error);
-                    const errorDiv = document.createElement('div');
-                    errorDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show', 'mb-3');
-                    errorDiv.setAttribute('role', 'alert');
-                    errorDiv.innerHTML = `Lỗi mạng khi xóa phiếu nhập kho ${maNhapToDelete}. <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                    document.querySelector('.table-responsive').prepend(errorDiv);
-                });
-                deleteModal.hide();
+        confirmDeleteBtn.addEventListener('click', function () {
+    if (maNhapToDelete) {
+        fetch(`/app/nhapkho/${maNhapToDelete}/xoa/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({})
+        })
+        .then(async (response) => {
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                showAlert('danger', 'Lỗi từ server. Không thể đọc dữ liệu phản hồi.');
+                return;
             }
+
+            if (response.ok && data.status === 'success') {
+                // ✅ Thành công → xóa dòng khỏi bảng
+                const rowToDelete = document.querySelector(`[data-ma-nhap="${maNhapToDelete}"]`).closest('tr');
+                if (rowToDelete) rowToDelete.remove();
+                showAlert('success', `Phiếu nhập kho ${maNhapToDelete} đã được xóa thành công.`);
+            } else {
+                // ❌ Thất bại → hiện lỗi cụ thể
+                showAlert('danger', data.message || `Không thể xóa phiếu nhập kho ${maNhapToDelete}.`);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Lỗi kết nối: ' + error.message);
         });
+
+        deleteModal.hide();
+    }
+});
+
+        function showAlert(type, message) {
+    const div = document.createElement('div');
+    div.className = `alert alert-${type} alert-dismissible fade show mb-3`;
+    div.role = 'alert';
+    div.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+    document.querySelector('.table-responsive').prepend(div);
+}
+
     });
 </script>
 {% endblock %}

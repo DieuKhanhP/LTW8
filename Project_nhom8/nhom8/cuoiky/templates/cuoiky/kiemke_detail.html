@@ -99,13 +99,14 @@
                 <thead class="table-dark">
                     <tr>
                         <th style="width: 5%">STT</th>
-                        <th style="width: 25%">Tên hàng hóa</th>
+                        <th style="width: 15%">Tên hàng hóa</th>
                         <th style="width: 15%">Mã hàng</th>
+                        <th style="width: 10%">Kho</th>
                         <th style="width: 10%">Đơn vị tính</th>
                         <th style="width: 10%">Số lượng hệ thống</th>
                         <th style="width: 10%">Số lượng thực tế</th>
                         <th style="width: 10%">Chênh lệch</th>
-                        <th style="width: 15%">Xử lý</th>
+                        <th style="width: 25%">Xử lý</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -114,6 +115,7 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ chitiet.hang_hoa.ten_hang }}</td>
                         <td>{{ chitiet.hang_hoa.ma_hang }}</td>
+                        <td class="text-center">{{ chitiet.kho.ten_kho }}</td>
                         <td>{{ chitiet.hang_hoa.don_vi_tinh }}</td>
                         <td class="text-center">{{ chitiet.so_luong_he_thong }}</td>
                         <td class="text-center">{{ chitiet.so_luong_tai_kho }}</td>

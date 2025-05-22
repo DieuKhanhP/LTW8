@@ -387,8 +387,9 @@ class KiemKeForm(forms.ModelForm):
 class ChiTietKiemKeForm(forms.ModelForm):
     class Meta:
         model = ChiTietKiemKe
-        fields = ['hang_hoa', 'so_luong_tai_kho', 'xu_ly']
+        fields = ['hang_hoa', 'kho','so_luong_tai_kho', 'xu_ly']
         widgets = {
+            'kho': forms.Select(attrs={'class': 'form-select'}),
             'hang_hoa': forms.Select(attrs={'class': 'form-select', 'required': True}),
             'so_luong_tai_kho': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'xu_ly': forms.Select(attrs={'class': 'form-select'})

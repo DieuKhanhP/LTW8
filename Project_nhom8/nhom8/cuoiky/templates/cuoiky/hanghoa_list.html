@@ -19,15 +19,25 @@
                    value="{{ request.GET.ten_hang|default:'' }}">
         </div>
         <div class="col-md">
-            <label for="tu_ngay" class="form-label form-label-sm">Từ ngày (HSD)</label>
-            <input type="date" name="tu_ngay" id="tu_ngay" class="form-control form-control-sm"
-                   value="{{ request.GET.tu_ngay|default:'' }}">
+            <label for="nhom_hang" class="form-label form-label-sm">Nhóm hàng</label>
+            <select name="nhom_hang" id="nhom_hang" class="form-select form-select-sm">
+                <option value="">--- Tất cả ---</option>
+                {% for value, label in NHOM_HANG_CHOICES %}
+                    <option value="{{ value }}" {% if request.GET.nhom_hang == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
+
         <div class="col-md">
-            <label for="den_ngay" class="form-label form-label-sm">Đến ngày (HSD)</label>
-            <input type="date" name="den_ngay" id="den_ngay" class="form-control form-control-sm"
-                   value="{{ request.GET.den_ngay|default:'' }}">
+            <label for="tinh_trang" class="form-label form-label-sm">Tình trạng</label>
+            <select name="tinh_trang" id="tinh_trang" class="form-select form-select-sm">
+                <option value="">--- Tất cả ---</option>
+                {% for value, label in TINH_TRANG_TONKHO_CHOICES %}
+                    <option value="{{ value }}" {% if request.GET.tinh_trang == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
+
         <div class="col-auto">
             <button type="submit" class="btn btn-primary btn-sm">
                 <i class="fas fa-search"></i> Tìm kiếm
@@ -159,114 +169,119 @@
 {{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
-    const deleteItemName = document.getElementById('delete-item-name');
-    const deleteItemCode = document.getElementById('delete-item-code');
+   const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+   const deleteButtons = document.querySelectorAll('.delete-btn');
+   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+   const deleteItemName = document.getElementById('delete-item-name');
+   const deleteItemCode = document.getElementById('delete-item-code');
 
-    let currentMaHang = null;
 
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            currentMaHang = this.getAttribute('data-ma-hang');
-            const tenHang = this.getAttribute('data-ten-hang');
-            deleteItemName.textContent = tenHang;
-            deleteItemCode.textContent = currentMaHang;
-            deleteModal.show();
-        });
-    });
+   let currentMaHang = null;
 
-    confirmDeleteBtn.addEventListener('click', function() {
-        if (!currentMaHang) return;
 
-        // Tạo form data để gửi POST request
-        const formData = new FormData();
-        formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+   deleteButtons.forEach(button => {
+       button.addEventListener('click', function() {
+           currentMaHang = this.getAttribute('data-ma-hang');
+           const tenHang = this.getAttribute('data-ten-hang');
+           deleteItemName.textContent = tenHang;
+           deleteItemCode.textContent = currentMaHang;
+           deleteModal.show();
+       });
+   });
 
-        fetch(`/hanghoa/${currentMaHang}/xoa/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: new FormData()
-        })
-        .then(response => {
-            // Kiểm tra kiểu nội dung trả về
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json().then(data => {
-                    if (!response.ok) {
-                        throw new Error(data.error || 'Lỗi khi xóa hàng hóa');
-                    }
-                    return data;
-                });
-            } else {
-                // Nếu không phải JSON, đọc dưới dạng text
-                return response.text().then(text => {
-                    throw new Error(`Server trả về không phải JSON: ${text.substring(0, 100)}...`);
-                });
-            }
-        })
-        .then(data => {
-            if (data.success) {
-                // Tìm và xóa hàng khỏi DOM mà không cần reload trang
-                const rowToDelete = document.querySelector(`tr[data-ma-hang="${currentMaHang}"]`);
-                if (rowToDelete) {
-                    rowToDelete.remove();
-                }
 
-                // Hiển thị thông báo thành công
-                const notificationDiv = document.createElement('div');
-                notificationDiv.classList.add('alert', 'alert-success', 'alert-dismissible', 'fade', 'show', 'mt-3');
-                notificationDiv.innerHTML = `${data.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-                document.querySelector('.table-responsive').before(notificationDiv);
+   confirmDeleteBtn.addEventListener('click', function() {
+       if (!currentMaHang) return;
 
-                // Tự động đóng thông báo sau 3 giây
-                setTimeout(() => {
-                    const alert = bootstrap.Alert.getOrCreateInstance(notificationDiv);
-                    alert.close();
-                }, 3000);
-            } else {
-                throw new Error(data.error || 'Có lỗi xảy ra khi xóa hàng hóa');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
 
-            // Hiển thị thông báo lỗi
-            const errorDiv = document.createElement('div');
-            errorDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show', 'mt-3');
-            errorDiv.innerHTML = `Lỗi: ${error.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-            document.querySelector('.table-responsive').before(errorDiv);
+       // Sửa đường dẫn URL để phù hợp với cấu hình URL của bạn
+       fetch(`/app/hanghoa/${currentMaHang}/xoa/`, {
+           method: 'POST',
+           headers: {
+               'X-CSRFToken': getCookie('csrftoken'),
+               'X-Requested-With': 'XMLHttpRequest'
+           },
+           body: new FormData()
+       })
+       .then(response => {
+           const contentType = response.headers.get('content-type');
+           if (contentType && contentType.includes('application/json')) {
+               return response.json().then(data => {
+                   if (!response.ok) {
+                       throw new Error(data.error || 'Lỗi khi xóa hàng hóa');
+                   }
+                   return data;
+               });
+           } else {
+               return response.text().then(text => {
+                   throw new Error(`Server trả về không phải JSON: ${text.substring(0, 100)}...`);
+               });
+           }
+       })
+       .then(data => {
+           if (data.success) {
+               // Tìm và xóa hàng khỏi DOM mà không cần reload trang
+               const rowToDelete = document.querySelector(`tr[data-ma-hang="${currentMaHang}"]`);
+               if (rowToDelete) {
+                   rowToDelete.remove();
+               }
 
-            // Tự động đóng thông báo lỗi sau 5 giây
-            setTimeout(() => {
-                const alert = bootstrap.Alert.getOrCreateInstance(errorDiv);
-                alert.close();
-            }, 5000);
-        })
-        .finally(() => {
-            deleteModal.hide();
-        });
-    });
 
-    // Function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
+               // Hiển thị thông báo thành công
+               const notificationDiv = document.createElement('div');
+               notificationDiv.classList.add('alert', 'alert-success', 'alert-dismissible', 'fade', 'show', 'mt-3');
+               notificationDiv.innerHTML = `${data.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+               document.querySelector('.table-responsive').before(notificationDiv);
+
+
+               // Tự động đóng thông báo sau 3 giây
+               setTimeout(() => {
+                   const alert = bootstrap.Alert.getOrCreateInstance(notificationDiv);
+                   alert.close();
+               }, 3000);
+           } else {
+               throw new Error(data.error || 'Có lỗi xảy ra khi xóa hàng hóa');
+           }
+       })
+       .catch(error => {
+           console.error('Error:', error);
+
+
+           // Hiển thị thông báo lỗi
+           const errorDiv = document.createElement('div');
+           errorDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show', 'mt-3');
+           errorDiv.innerHTML = ` ${error.message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+           document.querySelector('.table-responsive').before(errorDiv);
+
+
+           // Tự động đóng thông báo lỗi sau 5 giây
+           setTimeout(() => {
+               const alert = bootstrap.Alert.getOrCreateInstance(errorDiv);
+               alert.close();
+           }, 5000);
+       })
+       .finally(() => {
+           deleteModal.hide();
+       });
+   });
+
+
+   // Function to get CSRF token
+   function getCookie(name) {
+       let cookieValue = null;
+       if (document.cookie && document.cookie !== '') {
+           const cookies = document.cookie.split(';');
+           for (let i = 0; i < cookies.length; i++) {
+               const cookie = cookies[i].trim();
+               if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                   cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                   break;
+               }
+           }
+       }
+       return cookieValue;
+   }
 });
+
 </script>
 {% endblock %}

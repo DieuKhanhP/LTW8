@@ -98,12 +98,13 @@
                     <thead class="table-dark">
                         <tr>
                             <th style="width: 5%">STT</th>
-                            <th style="width: 25%">Tên hàng hóa</th>
+                            <th style="width: 15%">Tên hàng hóa</th>
                             <th style="width: 15%">Mã hàng</th>
+                            <th style="width: 10%">Kho</th>
                             <th style="width: 15%">Số lượng hệ thống</th>
                             <th style="width: 15%">Số lượng thực tế <span class="text-danger">*</span></th>
                             <th style="width: 10%">Chênh lệch</th>
-                            <th style="width: 10%">Xử lý</th>
+                            <th style="width: 25%">Xử lý</th>
                             <th style="width: 5%">Xóa</th>
                         </tr>
                     </thead>
@@ -123,6 +124,13 @@
                     <i class="fas fa-save me-1"></i> Lưu
                 </button>
             </div>
+            <!-- Dropdown mẫu để clone bằng JavaScript -->
+<select id="template-kho-select" class="form-select form-select-sm d-none">
+    {% for k in all_kho %}
+        <option value="{{ k.ma_kho }}">{{ k.ten_kho }}</option>
+    {% endfor %}
+</select>
+
         </form>
     </div>
 </div>
@@ -161,6 +169,7 @@
                                         Chọn
                                     </button>
                                 </td>
+
                                 <td class="item-name">{{ hh.ten_hang }}</td>
                                 <td class="item-code">{{ hh.ma_hang }}</td>
                                 <td>{{ hh.don_vi_tinh }}</td>
@@ -193,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const addItemsModal = new bootstrap.Modal(document.getElementById('addItemsModal'));
     const availableItemsTable = document.getElementById('available-items-table');
     const searchInput = document.getElementById('search-items');
+
     let itemCount = 0;
 
     // Tìm kiếm hàng hóa trong modal
@@ -283,9 +293,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <td>${chitietBody.querySelectorAll('tr:not(#empty-row)').length + 1}</td>
             <td>${hangHoa.ten_hang}</td>
             <td>${hangHoa.ma_hang}</td>
+            <td class="kho-cell"></td>
             <td>
                 <input type="number" class="form-control form-control-sm so-luong-he-thong"
-                    name="so_luong_he_thong_${itemCount}" value="${hangHoa.so_luong}" readonly>
+       name="so_luong_he_thong_${itemCount}" value="0" readonly>
                 <input type="hidden" name="hang_hoa_${itemCount}" value="${hangHoa.ma_hang}">
             </td>
             <td>
@@ -307,6 +318,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </td>
         `;
+
+        // Gắn dropdown kho thật vào ô kho
+        const khoTemplate = document.getElementById("template-kho-select");
+        const khoClone = khoTemplate.cloneNode(true);
+        khoClone.classList.remove("d-none");
+        khoClone.setAttribute("name", `kho_${itemCount}`);
+        newRow.querySelector('.kho-cell').appendChild(khoClone);
+
+        khoClone.addEventListener("change", function () {
+    const maHang = hangHoa.ma_hang;
+    const maKho = this.value;
+    const key = `${maHang}_${maKho}`;
+    const slHeThongInput = newRow.querySelector(".so-luong-he-thong");
+
+    if (TON_KHO[key] !== undefined) {
+        slHeThongInput.value = TON_KHO[key];
+    } else {
+        slHeThongInput.value = 0;
+    }
+});
+
+
 
         chitietBody.appendChild(newRow);
         itemCount++;
@@ -414,6 +447,11 @@ document.addEventListener('DOMContentLoaded', function() {
         saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang lưu...';
         saveButton.disabled = true;
     });
+    const TON_KHO = {
+        {% for ton in ton_kho_theo_kho %}
+            "{{ ton.hang_hoa.ma_hang }}_{{ ton.kho.ma_kho }}": {{ ton.so_luong }},
+        {% endfor %}
+    };
 });
 </script>
 {% endblock %}

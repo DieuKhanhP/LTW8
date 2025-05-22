@@ -3,7 +3,7 @@
 
 {% block title %}Danh sách Phiếu xuất kho - VLXD Xuân Trường{% endblock %}
 
-{% block page_title %}Danh sách Phiếu xuất kho{% endblock %}
+{% block page_title %}DANH SÁCH PHIẾU XUẤT KHO{% endblock %}
 
 {% block content %}
 <form method="get" action="{% url 'xuatkho-list' %}" class="mb-3 p-3 bg-light border rounded">
@@ -13,7 +13,7 @@
             <input type="text" name="ma_phieu" id="ma_phieu" class="form-control form-control-sm" value="{{ request.GET.ma_phieu|default:'' }}">
         </div>
         <div class="col-md">
-            <label for="nguoi_nhan" class="form-label form-label-sm">Người nhận</label>
+            <label for="nguoi_nhan" class="form-label form-label-sm">Nguồn nhận</label>
             <input type="text" name="nguoi_nhan" id="nguoi_nhan" class="form-control form-control-sm" value="{{ request.GET.nguoi_nhan|default:'' }}">
         </div>
         <div class="col-md">
@@ -64,7 +64,7 @@
         </thead>
         <tbody>
             {% for xk in xuatkho_list %}
-            <tr>
+            <tr data-ma-xuat="{{ xk.ma_xuat }}">
                 <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
                 <td>{{ xk.ma_xuat }}</td>
                 <td>{{ xk.nguon_nhan }}</td>
@@ -170,60 +170,59 @@
         deleteButtons.forEach(button => {
             button.addEventListener('click', function() {
                 maXuatToDelete = this.getAttribute('data-ma-xuat');
+                console.log("maXuatToDelete:", maXuatToDelete); // Thêm dòng này
                 document.getElementById('delete-ma-phieu').textContent = maXuatToDelete;
                 deleteModal.show();
             });
         });
 
-        confirmDeleteBtn.addEventListener('click', function() {
-            if (maXuatToDelete) {
-                fetch(`/app/xuatkho/${maXuatToDelete}/xoa/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Network response was not ok.');
-                })
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Xóa hàng khỏi bảng sau khi xóa thành công
-                        const rowToDelete = document.querySelector(`[data-ma-xuat="${maXuatToDelete}"]`).closest('tr');
-                        if (rowToDelete) {
-                            rowToDelete.remove();
-                        }
-                        // Hiển thị thông báo thành công
-                        const notificationDiv = document.createElement('div');
-                        notificationDiv.classList.add('alert', 'alert-success', 'alert-dismissible', 'fade', 'show', 'mb-3');
-                        notificationDiv.setAttribute('role', 'alert');
-                        notificationDiv.innerHTML = `Phiếu xuất kho ${maXuatToDelete} đã được xóa thành công. <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                        document.querySelector('.table-responsive').prepend(notificationDiv);
-                    } else {
-                        // Hiển thị thông báo lỗi
-                        showErrorAlert(data.message || 'Có lỗi xảy ra khi xóa phiếu xuất kho.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi:', error);
-                    showErrorAlert('Lỗi mạng khi xóa phiếu xuất kho.');
-                });
-                deleteModal.hide();
+        confirmDeleteBtn.addEventListener('click', function () {
+    if (maXuatToDelete) {
+        fetch(`/app/xuatkho/${maXuatToDelete}/xoa/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({})
+        })
+        .then(async (response) => {
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                showAlert('danger', 'Lỗi từ server. Không thể đọc dữ liệu phản hồi.');
+                return;
             }
+
+            if (response.ok && data.status === 'success') {
+                // ✅ Thành công → xóa dòng khỏi bảng
+                const rowToDelete = document.querySelector(`[data-ma-xuat="${maXuatToDelete}"]`).closest('tr');
+                if (rowToDelete) rowToDelete.remove();
+                showAlert('success', `Phiếu xuất kho ${maXuatToDelete} đã được xóa thành công.`);
+            } else {
+                // ❌ Thất bại → hiện lỗi cụ thể
+                showAlert('danger', data.message || `Không thể xóa phiếu xuất kho ${maXuatToDelete}.`);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Lỗi kết nối: ' + error.message);
         });
 
-        function showErrorAlert(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.classList.add('alert', 'alert-danger', 'alert-dismissible', 'fade', 'show', 'mb-3');
-            errorDiv.setAttribute('role', 'alert');
-            errorDiv.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-            document.querySelector('.table-responsive').prepend(errorDiv);
-        }
+        deleteModal.hide();
+    }
+});
+
+        function showAlert(type, message) {
+    const div = document.createElement('div');
+    div.className = `alert alert-${type} alert-dismissible fade show mb-3`;
+    div.role = 'alert';
+    div.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+    document.querySelector('.table-responsive').prepend(div);
+}
+
     });
 </script>
 {% endblock %}

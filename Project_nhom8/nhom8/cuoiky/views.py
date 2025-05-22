@@ -14,7 +14,7 @@ from django.db.models import Q  # Để dùng OR trong query
 from django.shortcuts import render
 from django.db.models import Sum, Count
 from django.utils import timezone
-from .models import HangHoa, NhapKho, XuatKho, KiemKe  # Import các model của bạn
+from .models import HangHoa, NhapKho, XuatKho, KiemKe , KhachHang # Import các model của bạn
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -42,6 +42,8 @@ def login_view(request):
 from .forms import ProfileForm
 from .models import CustomUser
 
+from django.db.models import Q
+from datetime import datetime
 
 @login_required
 def profile_view(request, username=None):
@@ -108,56 +110,165 @@ def dashboard_view(request):
     View này xử lý logic để lấy dữ liệu thống kê từ các model và truyền vào template.
     """
     now = timezone.now()
+    years = range(now.year - 5, now.year + 1)  # Tạo danh sách năm từ 5 năm trước đến năm hiện tại
+
+    # Lấy tham số lọc từ request
+    month = request.GET.get('month')
+    quarter = request.GET.get('quarter')
+    year = request.GET.get('year')
+
+    filters = Q()
+    if year:
+        filters &= Q(thoi_gian__year=year)
+
+    if month:
+        filters &= Q(thoi_gian__month=month)
+        quarter = None
+    elif quarter:
+        start_month = (int(quarter) - 1) * 3 + 1
+        end_month = start_month + 2
+        filters &= Q(thoi_gian__month__gte=start_month, thoi_gian__month__lte=end_month)
 
     # Tính toán tổng số lượng nhập và xuất (đã duyệt)
-    total_import = NhapKho.objects.filter(tinh_trang='DA_NHAP').count()
-    total_export = XuatKho.objects.filter(tinh_trang='CHO_DUYET').count()
+    filtered_nhapkho = NhapKho.objects.filter(filters)
+    filtered_xuatkho = XuatKho.objects.filter(filters)
+    filtered_kiemke = KiemKe.objects.filter(filters)
 
-    # Thống kê số lượng hàng hóa theo tình trạng
+    total_import = filtered_nhapkho.filter(tinh_trang='DA_DUYET').count()
+    total_export = filtered_xuatkho.filter(tinh_trang='DA_DUYET').count()
+
     con_hang_count = HangHoa.objects.filter(tinh_trang='CON_HANG').count()
     gan_het_hang_count = HangHoa.objects.filter(tinh_trang='GAN_HET_HANG').count()
     het_hang_count = HangHoa.objects.filter(tinh_trang='HET_HANG').count()
     tong_hang_hoa_count = HangHoa.objects.all().count()
 
-    # Thống kê nhập kho trong tháng
-    phieu_nhap_thang_count = NhapKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year).count()
-    gia_tri_nhap_thang = \
-    NhapKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_NHAP').aggregate(
-        Sum('tong'))['tong__sum'] or 0
-    phieu_nhap_cho_duyet_count = NhapKho.objects.filter(tinh_trang='CHO_DUYET').count()
+    phieu_nhap_thang_count = filtered_nhapkho.count()
+    gia_tri_nhap_thang = filtered_nhapkho.filter(tinh_trang='DA_NHAP').aggregate(Sum('tong'))['tong__sum'] or 0
+    phieu_nhap_cho_duyet_count = NhapKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
 
-    # Thống kê xuất kho trong tháng
-    phieu_xuat_thang_count = XuatKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year).count()
-    gia_tri_xuat_thang = \
-    XuatKho.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year, tinh_trang='DA_DUYET').aggregate(
-        Sum('tong'))['tong__sum'] or 0
-    phieu_xuat_cho_duyet_count = XuatKho.objects.filter(tinh_trang='CHO_DUYET').count()
+    phieu_xuat_thang_count = filtered_xuatkho.count()
+    gia_tri_xuat_thang = filtered_xuatkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0
+    phieu_xuat_cho_duyet_count = XuatKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
 
-    # Thống kê kiểm kê trong tháng
-    phieu_kiem_ke_thang_count = KiemKe.objects.filter(ngay_tao__month=now.month, ngay_tao__year=now.year).count()
-    phieu_kiem_ke_cho_duyet_count = KiemKe.objects.filter(tinh_trang='CHO_DUYET').count()
+    phieu_kiem_ke_thang_count = filtered_kiemke.count()
+    phieu_kiem_ke_cho_duyet_count = KiemKe.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
 
     # Truyền dữ liệu vào template
-    context = {
-        'total_import': total_import,
-        'total_export': total_export,
-        'con_hang_count': con_hang_count,
-        'gan_het_hang_count': gan_het_hang_count,
-        'het_hang_count': het_hang_count,
-        'tong_hang_hoa_count': tong_hang_hoa_count,
-        'phieu_nhap_thang_count': phieu_nhap_thang_count,
-        'gia_tri_nhap_thang': gia_tri_nhap_thang,
-        'phieu_nhap_cho_duyet_count': phieu_nhap_cho_duyet_count,
-        'phieu_xuat_thang_count': phieu_xuat_thang_count,
-        'gia_tri_xuat_thang': gia_tri_xuat_thang,
-        'phieu_xuat_cho_duyet_count': phieu_xuat_cho_duyet_count,
-        'phieu_kiem_ke_thang_count': phieu_kiem_ke_thang_count,
-        'phieu_kiem_ke_cho_duyet_count': phieu_kiem_ke_cho_duyet_count,
-    }
-
+    context = get_dashboard_context(request)
     return render(request, 'cuoiky/tongquan.html', context)  # Đảm bảo template của bạn ở đúng đường dẫn
 
+def get_dashboard_context(request):
+    now = timezone.now()
+    years = range(now.year - 5, now.year + 1)
 
+    month = request.GET.get('month')
+    quarter = request.GET.get('quarter')
+    year = request.GET.get('year')
+
+    filters = Q()
+    if year:
+        filters &= Q(thoi_gian__year=year)
+    if month:
+        filters &= Q(thoi_gian__month=month)
+        quarter = None
+    elif quarter:
+        start_month = (int(quarter) - 1) * 3 + 1
+        end_month = start_month + 2
+        filters &= Q(thoi_gian__month__gte=start_month, thoi_gian__month__lte=end_month)
+
+    filtered_nhapkho = NhapKho.objects.filter(filters)
+    filtered_xuatkho = XuatKho.objects.filter(filters)
+    filtered_kiemke = KiemKe.objects.filter(filters)
+
+    return {
+        'years': years,
+        'total_import': filtered_nhapkho.filter(tinh_trang='DA_DUYET').count(),
+        'total_export': filtered_xuatkho.filter(tinh_trang='DA_DUYET').count(),
+        'con_hang_count': HangHoa.objects.filter(tinh_trang='CON_HANG').count(),
+        'gan_het_hang_count': HangHoa.objects.filter(tinh_trang='GAN_HET_HANG').count(),
+        'het_hang_count': HangHoa.objects.filter(tinh_trang='HET_HANG').count(),
+        'tong_hang_hoa_count': HangHoa.objects.count(),
+        'phieu_nhap_thang_count': filtered_nhapkho.count(),
+        'gia_tri_nhap_thang': filtered_nhapkho.filter(tinh_trang='DA_NHAP').aggregate(Sum('tong'))['tong__sum'] or 0,
+        'phieu_nhap_cho_duyet_count': NhapKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
+        'phieu_xuat_thang_count': filtered_xuatkho.count(),
+        'gia_tri_xuat_thang': filtered_xuatkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0,
+        'phieu_xuat_cho_duyet_count': XuatKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
+        'phieu_kiem_ke_thang_count': filtered_kiemke.count(),
+        'phieu_kiem_ke_cho_duyet_count': KiemKe.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
+    }
+
+from docx import Document
+from django.http import HttpResponse
+from datetime import datetime
+from django.utils.html import format_html
+@login_required
+def export_baocao_doc(request):
+    if not request.user.groups.filter(name='Quản lý kho').exists():
+        return JsonResponse({'success': False, 'error': 'Bạn không có quyền in báo cáo.'}, status=403)
+    year = request.GET.get('year')
+    month = request.GET.get('month')
+    quarter = request.GET.get('quarter')
+
+    # Gọi lại dashboard để lấy context
+    fake_request = request
+    fake_request.GET = request.GET.copy()
+    context = get_dashboard_context(request)
+
+    # Tạo tài liệu Word
+    doc = Document()
+    doc.add_heading('BÁO CÁO TỔNG QUAN KHO - VLXD Xuân Trường', 0)
+
+    # Thời gian báo cáo
+    thoi_gian = "Tất cả thời gian"
+    if month:
+        thoi_gian = f"Tháng {month} "
+    elif quarter:
+        thoi_gian = f"Quý {quarter} "
+    if year:
+        thoi_gian += f"Năm {year}"
+
+    doc.add_paragraph(f"Thời gian báo cáo: {thoi_gian}", style='Intense Quote')
+
+    # Tổng quan nhập - xuất
+    doc.add_heading('I. Tổng quan nhập - xuất', level=1)
+    doc.add_paragraph(f"- Tổng số lượng hàng hóa được nhập: {context.get('total_import')} đơn vị")
+    doc.add_paragraph(f"- Tổng số lượng hàng hóa được xuất: {context.get('total_export')} đơn vị")
+
+    # Tình trạng tồn kho
+    doc.add_heading('II. Tình trạng tồn kho', level=1)
+    doc.add_paragraph(f"- Số loại hàng hóa còn hàng: {context.get('con_hang_count')}")
+    doc.add_paragraph(f"- Số loại hàng gần hết: {context.get('gan_het_hang_count')}")
+    doc.add_paragraph(f"- Số loại hàng đã hết: {context.get('het_hang_count')}")
+    doc.add_paragraph(f"- Tổng số loại hàng hóa hiện có: {context.get('tong_hang_hoa_count')}")
+
+    # Nhập kho chi tiết
+    doc.add_heading('III. Nhập kho', level=1)
+    doc.add_paragraph(f"- Số phiếu nhập trong kỳ: {context.get('phieu_nhap_thang_count')}")
+    doc.add_paragraph(f"- Tổng giá trị nhập: {context.get('gia_tri_nhap_thang'):,.0f} VND")
+    doc.add_paragraph(f"- Phiếu nhập chờ duyệt: {context.get('phieu_nhap_cho_duyet_count')}")
+
+    # Xuất kho chi tiết
+    doc.add_heading('IV. Xuất kho', level=1)
+    doc.add_paragraph(f"- Số phiếu xuất trong kỳ: {context.get('phieu_xuat_thang_count')}")
+    doc.add_paragraph(f"- Tổng giá trị xuất: {context.get('gia_tri_xuat_thang'):,.0f} VND")
+    doc.add_paragraph(f"- Phiếu xuất chờ duyệt: {context.get('phieu_xuat_cho_duyet_count')}")
+
+    # Kiểm kê chi tiết
+    doc.add_heading('V. Kiểm kê kho', level=1)
+    doc.add_paragraph(f"- Số phiếu kiểm kê đã lập: {context.get('phieu_kiem_ke_thang_count')}")
+    doc.add_paragraph(f"- Phiếu kiểm kê chờ duyệt: {context.get('phieu_kiem_ke_cho_duyet_count')}")
+
+    # Kết luận
+    doc.add_heading('VI. Ghi chú', level=1)
+    doc.add_paragraph("Dữ liệu trong báo cáo chỉ tính các phiếu đã được duyệt và cập nhật đến thời điểm hiện tại.")
+
+    # Trả file Word về
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    filename = f'bao_cao_tong_quan_{datetime.now().strftime("%Y%m%d_%H%M%S")}.docx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    doc.save(response)
+    return response
 from django.http import JsonResponse
 from django.contrib import messages
 
@@ -172,49 +283,29 @@ from django.shortcuts import get_object_or_404, redirect
 
 
 @require_POST
+@login_required
 def hanghoa_delete(request, ma_hang):
+    if not is_quan_ly_kho(request.user):
+        return JsonResponse({
+            'success': False,
+            'error': 'Bạn không có quyền xóa hàng hóa.'
+        }, status=403)
+
+    hanghoa = get_object_or_404(HangHoa, ma_hang=ma_hang)
+
     try:
-        hanghoa = get_object_or_404(HangHoa, ma_hang=ma_hang)
-        ten_hang = hanghoa.ten_hang  # Lưu tên hàng trước khi xóa
-
-        # Kiểm tra xem hàng hóa có liên kết với các bảng khác không
-        if hasattr(hanghoa, 'chi_tiet_nhap') and hanghoa.chi_tiet_nhap.exists():
-            return JsonResponse({
-                'success': False,
-                'error': 'Không thể xóa hàng hóa này vì đã có trong phiếu nhập kho.'
-            }, status=400)
-
-        if hasattr(hanghoa, 'chi_tiet_xuat') and hanghoa.chi_tiet_xuat.exists():
-            return JsonResponse({
-                'success': False,
-                'error': 'Không thể xóa hàng hóa này vì đã có trong phiếu xuất kho.'
-            }, status=400)
-
-        if hasattr(hanghoa, 'chi_tiet_kiem_ke') and hanghoa.chi_tiet_kiem_ke.exists():
-            return JsonResponse({
-                'success': False,
-                'error': 'Không thể xóa hàng hóa này vì đã có trong phiếu kiểm kê.'
-            }, status=400)
-
         hanghoa.delete()
-
         return JsonResponse({
             'success': True,
-            'message': f'Đã xóa thành công hàng hóa: {ten_hang}'
+            'message': f'Đã xóa hàng hóa {ma_hang} thành công.'
         })
-    except HangHoa.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': f'Không tìm thấy hàng hóa với mã: {ma_hang}'
-        }, status=404)
     except Exception as e:
-        print(f"Lỗi khi xóa hàng hóa: {str(e)}")
         return JsonResponse({
             'success': False,
-            'error': f'Lỗi khi xóa hàng hóa: {str(e)}'
+            'error': f'Lỗi khi xóa: {str(e)}'
         }, status=500)
 
-
+from .models import NHOM_HANG_CHOICES, TINH_TRANG_TONKHO_CHOICES
 class HangHoaListView(generic.ListView):
     model = HangHoa
     template_name = 'cuoiky/hanghoa_list.html'  # Đổi tên template
@@ -225,9 +316,8 @@ class HangHoaListView(generic.ListView):
         queryset = super().get_queryset().order_by('-ma_hang')
         query_ma = self.request.GET.get('ma_hang')
         query_ten = self.request.GET.get('ten_hang')
-        # Lấy tham số ngày (ví dụ lọc theo hạn sử dụng)
-        query_date_from = self.request.GET.get('tu_ngay')
-        query_date_to = self.request.GET.get('den_ngay')
+        query_nhom = self.request.GET.get('nhom_hang')
+        query_trangthai = self.request.GET.get('tinh_trang')
 
         if query_ma:
             # Tìm kiếm gần đúng hoặc chính xác tùy bạn chọn
@@ -235,12 +325,10 @@ class HangHoaListView(generic.ListView):
         if query_ten:
             queryset = queryset.filter(ten_hang__icontains=query_ten)
 
-        # Ví dụ lọc theo khoảng hạn sử dụng (nếu cần)
-        if query_date_from:
-            queryset = queryset.filter(han_su_dung__gte=query_date_from)
-        if query_date_to:
-            queryset = queryset.filter(han_su_dung__lte=query_date_to)
-
+        if query_nhom:
+            queryset = queryset.filter(nhom_hang=query_nhom)
+        if query_trangthai:
+            queryset = queryset.filter(tinh_trang=query_trangthai)
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -250,7 +338,9 @@ class HangHoaListView(generic.ListView):
         if 'page' in search_params:
             del search_params['page']
         context['search_params'] = search_params.urlencode()
-        context['request'] = self.request  # Truyền request vào context để lấy GET params trong template
+        context['request'] = self.request
+        context['NHOM_HANG_CHOICES'] = NHOM_HANG_CHOICES
+        context['TINH_TRANG_TONKHO_CHOICES'] = TINH_TRANG_TONKHO_CHOICES
         return context
 
 
@@ -352,12 +442,19 @@ import openpyxl
 
 from .models import NhapKho, ChiTietNhap, HangHoa
 from .forms import NhapKhoForm, ChiTietNhapForm
+from django.http import JsonResponse
 
 
 # Thay đổi view xóa phiếu nhập kho
 def xoa_nhapkho(request, ma_nhap):
-    nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
+    if not is_quan_ly_kho(request.user):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xóa phiếu nhập kho.'
+            }, status=403)
 
+
+    nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ.'}, status=400)
 
@@ -765,6 +862,9 @@ def duyet_nhapkho(request, ma_nhap):
 
 # Từ chối phiếu nhập kho
 def tu_choi_nhapkho(request, ma_nhap):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
     nhapkho = get_object_or_404(NhapKho, ma_nhap=ma_nhap)
     print(f"Từ chối phiếu nhập kho: {ma_nhap}")
 
@@ -888,6 +988,12 @@ from .models import XuatKho
 
 
 def xoa_xuatkho(request, ma_xuat):
+    if not is_quan_ly_kho(request.user):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bạn không có quyền xóa phiếu xuất kho.'
+            }, status=403)
+
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
     if xuatkho.tinh_trang != 'CHO_DUYET':
@@ -1142,6 +1248,10 @@ class XuatKhoUpdateView(UpdateView):
 
 # Duyệt phiếu xuất kho
 def duyet_xuatkho(request, ma_xuat):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu xuất kho.")
+        return redirect('xuatkho-detail', ma_xuat=ma_xuat)
+
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
     if xuatkho.tinh_trang != 'CHO_DUYET':
@@ -1248,6 +1358,9 @@ def xuat_kho(request, ma_xuat):
 
 # Từ chối phiếu xuất kho
 def tu_choi_xuatkho(request, ma_xuat):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
     if xuatkho.tinh_trang == 'CHO_DUYET':
@@ -1328,9 +1441,11 @@ def kiemke_create(request):
                 so_luong_he_thong = request.POST.get(f'so_luong_he_thong_{index}', 0)
                 so_luong_tai_kho = request.POST.get(f'so_luong_tai_kho_{index}', 0)
                 xu_ly_value = request.POST.get(f'xu_ly_value_{index}', '')  # Lấy giá trị từ hidden field
+                kho_id = request.POST.get(f'kho_{index}', None)
 
                 chi_tiet_data.append({
                     'hang_hoa': hang_hoa_id,
+                    'kho': kho_id,
                     'so_luong_he_thong': so_luong_he_thong,
                     'so_luong_tai_kho': so_luong_tai_kho,
                     'xu_ly': xu_ly_value  # Sử dụng giá trị từ hidden field
@@ -1364,6 +1479,7 @@ def kiemke_create(request):
                     # Lưu chi tiết kiểm kê
                     for item in chi_tiet_data:
                         hang_hoa = HangHoa.objects.get(pk=item['hang_hoa'])
+                        kho = Kho.objects.get(pk=item['kho'])
                         so_luong_he_thong = int(item['so_luong_he_thong'])
                         so_luong_tai_kho = int(item['so_luong_tai_kho'])
                         chenh_lech = so_luong_tai_kho - so_luong_he_thong
@@ -1371,6 +1487,7 @@ def kiemke_create(request):
                         ChiTietKiemKe.objects.create(
                             phieu_kiem_ke=kiemke,
                             hang_hoa=hang_hoa,
+                            kho=kho,
                             so_luong_he_thong=so_luong_he_thong,
                             so_luong_tai_kho=so_luong_tai_kho,
                             chenh_lech=chenh_lech,
@@ -1408,6 +1525,8 @@ def kiemke_create(request):
     context = {
         'kiemke_form': kiemke_form,
         'all_hanghoa': HangHoa.objects.all(),
+        'all_kho': Kho.objects.all(),
+        'ton_kho_theo_kho': TonKhoTheoKho.objects.all(),
         'now': timezone.now()
     }
     return render(request, 'cuoiky/kiemke_create.html', context)
@@ -1521,6 +1640,10 @@ def kiemke_update(request, ma_kiemke):
 
 @login_required
 def kiemke_delete(request, ma_kiemke):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, 'Bạn không có  quyền xóa phiếu kiểm kê.')
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
     """Xóa phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
 
@@ -1549,6 +1672,10 @@ def kiemke_delete(request, ma_kiemke):
 
 @login_required
 def duyet_kiemke(request, ma_kiemke):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu kiểm kê.")
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
+
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
 
     if kiemke.tinh_trang != 'CHO_DUYET':
@@ -1570,6 +1697,9 @@ def duyet_kiemke(request, ma_kiemke):
 
 @login_required
 def tu_choi_kiemke(request, ma_kiemke):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
+        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
     """Từ chối phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
 
@@ -1584,3 +1714,24 @@ def tu_choi_kiemke(request, ma_kiemke):
     return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
 
 # cuoiky/views.py
+
+from django.views.generic import ListView
+from .models import KhachHang
+from django.db.models import Q
+
+class KhachHangListView(ListView):
+    model = KhachHang
+    template_name = 'cuoiky/khachhang_list.html'
+    context_object_name = 'khachhang_list'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(
+                Q(ma_khachhang__icontains=q) |
+                Q(ten_khachhang__icontains=q) |
+                Q(sdt__icontains=q)
+            )
+        return qs
+

@@ -1,0 +1,62 @@
+{% extends 'cuoiky/base.html' %}
+{% load static %}
+
+{% block title %}Danh sách Khách hàng - VLXD Xuân Trường{% endblock %}
+
+{% block page_title %}Danh sách Khách hàng{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input type="text" name="q" class="form-control form-control-sm" placeholder="Tìm theo tên, mã, SĐT..." value="{{ request.GET.q }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fas fa-search me-1"></i> Tìm kiếm
+                    </button>
+                    <a href="{% url 'khachhang-list' %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-times me-1"></i> Xóa bộ lọc
+                    </a>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã KH</th>
+                            <th>Tên khách hàng</th>
+                            <th>Liên hệ</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kh in khachhang_list %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ kh.ma_khachhang }}</td>
+                            <td>{{ kh.ten_khachhang }}</td>
+                            <td>
+                                <div>{{ kh.sdt }}</div>
+                                <div>{{ kh.email }}</div>
+                                <div>{{ kh.dia_chi }}</div>
+                            </td>
+                            <td class="text-center">
+                                <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                                <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-trash-alt"></i></a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center">Không có khách hàng nào.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
