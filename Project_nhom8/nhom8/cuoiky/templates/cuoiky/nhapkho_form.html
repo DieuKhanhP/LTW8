@@ -8,6 +8,11 @@
 {% block page_title %}{% if object %}Sửa phiếu nhập kho{% else %}Thêm mới phiếu nhập kho{% endif %}{% endblock %}
 
 {% block extra_head %}
+<!-- CSS Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- JS Select2 -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <style>
     .delete-row {
         color: #dc3545;
@@ -693,3 +698,13 @@
     });
 </script>
 {% endblock %}
+
+<script>
+$(document).ready(function () {
+    $('.select2').select2({
+        tags: true,
+        placeholder: "Chọn hoặc nhập tên nhà cung cấp",
+        allowClear: true
+    });
+});
+</script>

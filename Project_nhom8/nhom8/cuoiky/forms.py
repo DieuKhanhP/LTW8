@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import NhapKho, ChiTietNhap, HangHoa, CustomUser, XuatKho, ChiTietXuat, KiemKe, ChiTietKiemKe
+from .models import NhapKho, ChiTietNhap, HangHoa, CustomUser, XuatKho, ChiTietXuat, KiemKe, ChiTietKiemKe, NhaCungCap
 from .models import DON_VI_TINH_CHOICES, TINH_TRANG_TONKHO_CHOICES, NHOM_HANG_CHOICES
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -182,7 +182,9 @@ class NhapKhoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Đánh dấu các trường bắt buộc
-        self.fields['nguon_nhap'].required = True
+        self.fields['nguon_nhap'].widget.attrs.update({
+            'class': 'form-select select2',
+        })
         self.fields['thoi_gian'].required = True
         self.fields['kho'].required = True
 
@@ -190,6 +192,10 @@ class NhapKhoForm(forms.ModelForm):
         cleaned_data = super().clean()
         ly_do = cleaned_data.get("ly_do")
         ly_do_khac = cleaned_data.get("ly_do_khac")
+        nguon_nhap = cleaned_data.get("nguon_nhap")
+        ten_ncc_khac = cleaned_data.get("ten_ncc_khac")
+        if not nguon_nhap and not ten_ncc_khac:
+            raise forms.ValidationError("Phải chọn nhà cung cấp hoặc nhập tên nhà cung cấp khác.")
 
         if ly_do == 'KHAC' and not ly_do_khac:
             raise forms.ValidationError("Bạn cần nhập lý do khác khi chọn lý do là 'Khác'.")
@@ -427,5 +433,20 @@ ChiTietKiemKeFormSetUpdate = forms.inlineformset_factory(
     extra=0,
     can_delete=True
 )
+
+
+
+class NhaCungCapForm(forms.ModelForm):
+    class Meta:
+        model = NhaCungCap
+        fields = ['ma_ncc', 'ten_ncc', 'nguoi_dai_dien', 'sdt', 'email', 'dia_chi']
+        widgets = {
+            'ma_ncc': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'ten_ncc': forms.TextInput(attrs={'class': 'form-control'}),
+            'nguoi_dai_dien': forms.TextInput(attrs={'class': 'form-control'}),
+            'sdt': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'dia_chi': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
 
 

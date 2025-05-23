@@ -18,6 +18,7 @@ from .models import HangHoa, NhapKho, XuatKho, KiemKe , KhachHang # Import các 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from .forms import NhaCungCapForm
 
 User = get_user_model()
 
@@ -104,58 +105,6 @@ def profile_view(request, username=None):
     }
 
     return render(request, 'profile.html', context)
-@login_required
-def dashboard_view(request):
-    """
-    View này xử lý logic để lấy dữ liệu thống kê từ các model và truyền vào template.
-    """
-    now = timezone.now()
-    years = range(now.year - 5, now.year + 1)  # Tạo danh sách năm từ 5 năm trước đến năm hiện tại
-
-    # Lấy tham số lọc từ request
-    month = request.GET.get('month')
-    quarter = request.GET.get('quarter')
-    year = request.GET.get('year')
-
-    filters = Q()
-    if year:
-        filters &= Q(thoi_gian__year=year)
-
-    if month:
-        filters &= Q(thoi_gian__month=month)
-        quarter = None
-    elif quarter:
-        start_month = (int(quarter) - 1) * 3 + 1
-        end_month = start_month + 2
-        filters &= Q(thoi_gian__month__gte=start_month, thoi_gian__month__lte=end_month)
-
-    # Tính toán tổng số lượng nhập và xuất (đã duyệt)
-    filtered_nhapkho = NhapKho.objects.filter(filters)
-    filtered_xuatkho = XuatKho.objects.filter(filters)
-    filtered_kiemke = KiemKe.objects.filter(filters)
-
-    total_import = filtered_nhapkho.filter(tinh_trang='DA_DUYET').count()
-    total_export = filtered_xuatkho.filter(tinh_trang='DA_DUYET').count()
-
-    con_hang_count = HangHoa.objects.filter(tinh_trang='CON_HANG').count()
-    gan_het_hang_count = HangHoa.objects.filter(tinh_trang='GAN_HET_HANG').count()
-    het_hang_count = HangHoa.objects.filter(tinh_trang='HET_HANG').count()
-    tong_hang_hoa_count = HangHoa.objects.all().count()
-
-    phieu_nhap_thang_count = filtered_nhapkho.count()
-    gia_tri_nhap_thang = filtered_nhapkho.filter(tinh_trang='DA_NHAP').aggregate(Sum('tong'))['tong__sum'] or 0
-    phieu_nhap_cho_duyet_count = NhapKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
-
-    phieu_xuat_thang_count = filtered_xuatkho.count()
-    gia_tri_xuat_thang = filtered_xuatkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0
-    phieu_xuat_cho_duyet_count = XuatKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
-
-    phieu_kiem_ke_thang_count = filtered_kiemke.count()
-    phieu_kiem_ke_cho_duyet_count = KiemKe.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count()
-
-    # Truyền dữ liệu vào template
-    context = get_dashboard_context(request)
-    return render(request, 'cuoiky/tongquan.html', context)  # Đảm bảo template của bạn ở đúng đường dẫn
 
 def get_dashboard_context(request):
     now = timezone.now()
@@ -182,21 +131,32 @@ def get_dashboard_context(request):
 
     return {
         'years': years,
-        'total_import': filtered_nhapkho.filter(tinh_trang='DA_DUYET').count(),
-        'total_export': filtered_xuatkho.filter(tinh_trang='DA_DUYET').count(),
+        'total_import': NhapKho.objects.filter(tinh_trang='DA_DUYET').filter(filters).count(),
+        'total_export': XuatKho.objects.filter(tinh_trang='DA_DUYET').filter(filters).count(),
         'con_hang_count': HangHoa.objects.filter(tinh_trang='CON_HANG').count(),
         'gan_het_hang_count': HangHoa.objects.filter(tinh_trang='GAN_HET_HANG').count(),
-        'het_hang_count': HangHoa.objects.filter(tinh_trang='HET_HANG').count(),
-        'tong_hang_hoa_count': HangHoa.objects.count(),
-        'phieu_nhap_thang_count': filtered_nhapkho.count(),
-        'gia_tri_nhap_thang': filtered_nhapkho.filter(tinh_trang='DA_NHAP').aggregate(Sum('tong'))['tong__sum'] or 0,
-        'phieu_nhap_cho_duyet_count': NhapKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
-        'phieu_xuat_thang_count': filtered_xuatkho.count(),
-        'gia_tri_xuat_thang': filtered_xuatkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0,
-        'phieu_xuat_cho_duyet_count': XuatKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
-        'phieu_kiem_ke_thang_count': filtered_kiemke.count(),
-        'phieu_kiem_ke_cho_duyet_count': KiemKe.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count(),
+        'het_hang_count': HangHoa.objects.filter(tinh_trang='HET_HANG').count()or 0,
+        'tong_hang_hoa_count': HangHoa.objects.count() or 0,
+        'phieu_nhap_count': filtered_nhapkho.count() or 0,
+        'gia_tri_nhap': filtered_nhapkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0,
+        'phieu_nhap_cho_duyet': NhapKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count() or 0,
+        'phieu_xuat_count': filtered_xuatkho.count() or 0,
+        'gia_tri_xuat': filtered_xuatkho.filter(tinh_trang='DA_DUYET').aggregate(Sum('tong'))['tong__sum'] or 0,
+        'phieu_xuat_cho_duyet': XuatKho.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count() or 0,
+        'phieu_kiem_ke_count': filtered_kiemke.count() or 0,
+        'phieu_kiem_ke_cho_duyet': KiemKe.objects.filter(tinh_trang='CHO_DUYET').filter(filters).count() or 0,
+
     }
+@login_required
+def dashboard_view(request):
+    """
+    View chính hiển thị tổng quan kho – dữ liệu thống kê sẽ được xử lý trong get_dashboard_context.
+    """
+    context = get_dashboard_context(request)
+    context['is_manager'] = is_warehouse_manager(request.user)
+    return render(request, 'cuoiky/tongquan.html', context)
+
+
 
 from docx import Document
 from django.http import HttpResponse
@@ -466,6 +426,13 @@ def xoa_nhapkho(request, ma_nhap):
                     hanghoa = chitiet.ma_hang
                     hanghoa.so_luong_he_thong -= chitiet.so_luong_nhap
                     hanghoa.save()
+
+                    ton_entries = TonKhoTheoKho.objects.filter(hang_hoa=hanghoa, kho=nhapkho.kho)
+                    for ton in ton_entries:
+                        ton.so_luong -= chitiet.so_luong_nhap
+                        if ton.so_luong < 0:
+                            ton.so_luong = 0
+                        ton.save()
                     print(
                         f"[-] Trừ {chitiet.so_luong_nhap} khỏi {hanghoa.ma_hang} → tồn kho mới: {hanghoa.so_luong_he_thong}")
 
@@ -547,7 +514,7 @@ class NhapKhoDetailView(DetailView):
 
 
 # Tạo phiếu nhập kho mới
-# Tạo phiếu nhập kho mới
+
 class NhapKhoCreateView(CreateView):
     model = NhapKho
     form_class = NhapKhoForm
@@ -585,6 +552,7 @@ class NhapKhoCreateView(CreateView):
     def form_valid(self, form):
         context = self.get_context_data()
         chitiet_formset = context['chitiet_formset']
+
 
         # Lưu phiếu nhập kho trước
         with transaction.atomic():
@@ -996,27 +964,25 @@ def xoa_xuatkho(request, ma_xuat):
 
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
-    if xuatkho.tinh_trang != 'CHO_DUYET':
-        return JsonResponse({'status': 'error', 'message': 'Không thể xóa phiếu đã được duyệt hoặc đã xuất kho.'},
-                            status=400)
+    try:
+        with transaction.atomic():
+            if xuatkho.tinh_trang == 'DA_DUYET':
+                for chitiet in xuatkho.chi_tiet_xuat.all():
+                    hanghoa = chitiet.ma_hang
+                    hanghoa.so_luong_he_thong += chitiet.so_luong_xuat
+                    hanghoa.save()
 
-    if request.method == 'POST':
-        try:
-            with transaction.atomic():
-                print(f"Các chi tiết xuất kho trước khi xóa: {xuatkho.chi_tiet_xuat.all()}")
-                xuatkho.chi_tiet_xuat.all().delete()
-                print("Đã xóa các chi tiết xuất kho.")
-                print(f"Phiếu xuất kho trước khi xóa: {xuatkho}")
-                xuatkho.delete()
-                print("Đã xóa phiếu xuất kho.")
-            return JsonResponse({'status': 'success', 'message': f'Phiếu xuất kho {ma_xuat} đã được xóa thành công.'})
-        except Exception as e:
-            print(f"Lỗi khi xóa phiếu xuất kho: {e}")
-            return JsonResponse({'status': 'error', 'message': f'Có lỗi xảy ra khi xóa phiếu xuất kho: {e}'},
-                                status=500)
+                    ton_kho = TonKhoTheoKho.objects.filter(hang_hoa=hanghoa, kho=xuatkho.kho).first()
+                    if ton_kho:
+                        ton_kho.so_luong += chitiet.so_luong_xuat
+                        ton_kho.save()
 
-    # Nếu không phải POST (ví dụ, truy cập trực tiếp), trả về lỗi
-    return JsonResponse({'status': 'error', 'message': 'Yêu cầu không hợp lệ.'}, status=400)
+            xuatkho.chi_tiet_xuat.all().delete()
+            xuatkho.delete()
+        return JsonResponse({'status': 'success', 'message': f'Đã xóa phiếu xuất kho {ma_xuat} thành công.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'Lỗi khi xóa: {str(e)}'}, status=500)
+
 
 
 # Danh sách phiếu xuất kho
@@ -1360,7 +1326,7 @@ def xuat_kho(request, ma_xuat):
 def tu_choi_xuatkho(request, ma_xuat):
     if not is_quan_ly_kho(request.user):
         messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
-        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
+        return redirect('nhapkho-detail', ma_nhap=ma_xuat)
     xuatkho = get_object_or_404(XuatKho, ma_xuat=ma_xuat)
 
     if xuatkho.tinh_trang == 'CHO_DUYET':
@@ -1698,8 +1664,8 @@ def duyet_kiemke(request, ma_kiemke):
 @login_required
 def tu_choi_kiemke(request, ma_kiemke):
     if not is_quan_ly_kho(request.user):
-        messages.error(request, "Bạn không có quyền duyệt phiếu nhập kho.")
-        return redirect('nhapkho-detail', ma_nhap=ma_nhap)
+        messages.error(request, "Bạn không có quyền từ chối phiếu kiểm kê.")
+        return redirect('kiemke-detail', ma_kiemke=ma_kiemke)
     """Từ chối phiếu kiểm kê."""
     kiemke = get_object_or_404(KiemKe, ma_kiemke=ma_kiemke)
 
@@ -1716,7 +1682,7 @@ def tu_choi_kiemke(request, ma_kiemke):
 # cuoiky/views.py
 
 from django.views.generic import ListView
-from .models import KhachHang
+from .models import KhachHang, NhaCungCap
 from django.db.models import Q
 
 class KhachHangListView(ListView):
@@ -1734,4 +1700,95 @@ class KhachHangListView(ListView):
                 Q(sdt__icontains=q)
             )
         return qs
+
+
+class NhaCungCapListView(ListView):
+    model = NhaCungCap
+    template_name = 'cuoiky/nhacungcap_list.html'
+    context_object_name = 'nhacungcap_list'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(
+                Q(ma_ncc__icontains=q) |
+                Q(ten_ncc__icontains=q) |
+                Q(sdt__icontains=q)
+            )
+        return qs
+
+
+class NhaCungCapDetailView(DetailView):
+    model = NhaCungCap
+    template_name = 'cuoiky/nhacungcap_detail.html'
+    context_object_name = 'ncc'
+
+class NhaCungCapUpdateView(UpdateView):
+    model = NhaCungCap
+    form_class = NhaCungCapForm
+    template_name = 'cuoiky/nhacungcap_form.html'
+    success_url = reverse_lazy('nhacungcap-list')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not is_quan_ly_kho(request.user):
+            messages.error(request, "Bạn không có quyền sửa thông tin nhà cung cấp.")
+            return redirect('nhacungcap-detail', pk=kwargs.get('pk'))
+        return super().dispatch(request, *args, **kwargs)
+
+class NhaCungCapCreateView(CreateView):
+    model = NhaCungCap
+    form_class = NhaCungCapForm
+    template_name = 'cuoiky/nhacungcap_form.html'
+    success_url = reverse_lazy('nhacungcap-list')
+    def dispatch(self, request, *args, **kwargs):
+        if not is_quan_ly_kho(request.user):
+            messages.error(request, "Bạn không có quyền tạo thông tin nhà cung cấp.")
+            return redirect('nhacungcap-list')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_initial(self):
+        initial = super().get_initial()
+        last_item = NhaCungCap.objects.order_by('-ma_ncc').first()
+        if last_item and last_item.ma_ncc.startswith("NCC"):
+            try:
+                last_number = int(last_item.ma_ncc.replace("NCC", ""))
+                new_number = last_number + 1
+            except ValueError:
+                new_number = 1
+        else:
+            new_number = 1
+        initial['ma_ncc'] = f"NCC{new_number:04d}"
+        return initial
+
+@login_required
+def delete_nhacungcap(request, pk):
+    if not is_quan_ly_kho(request.user):
+        messages.error(request, "Bạn không có quyền xóa nhà cung cấp.")
+        return redirect('nhacungcap-detail', pk=pk)
+
+    ncc = get_object_or_404(NhaCungCap, pk=pk)
+    try:
+        ncc.delete()
+        messages.success(request, f'Đã xóa nhà cung cấp: {ncc.ten_ncc}')
+    except Exception as e:
+        messages.error(request, f'Không thể xóa: {e}')
+    return redirect('nhacungcap-list')
+
+
+class KhoListView(ListView):
+    model = Kho
+    template_name = 'cuoiky/kho_list.html'
+    context_object_name = 'kho_list'
+
+class KhoDetailView(DetailView):
+    model = Kho
+    template_name = 'cuoiky/kho_detail.html'
+    context_object_name = 'kho'
+    pk_url_kwarg = 'ma_kho'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['ton_kho'] = TonKhoTheoKho.objects.filter(kho=self.object).select_related('hang_hoa')
+        return context
 

@@ -1,0 +1,53 @@
+{% extends 'cuoiky/base.html' %}
+{% load static %}
+
+{% block title %}Chi tiết Nhà cung cấp - {{ ncc.ten_ncc }}{% endblock %}
+
+{% block page_title %}Chi tiết Nhà cung cấp{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Thông tin nhà cung cấp: {{ ncc.ten_ncc }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Mã nhà cung cấp:</label>
+                    <div>{{ ncc.ma_ncc }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Tên nhà cung cấp:</label>
+                    <div>{{ ncc.ten_ncc }}</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Số điện thoại:</label>
+                    <div>{{ ncc.sdt }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Email:</label>
+                    <div>{{ ncc.email }}</div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Người đại diện:</label>
+                    <div>{{ ncc.nguoi_dai_dien }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Địa chỉ:</label>
+                    <div>{{ ncc.dia_chi }}</div>
+                </div>
+            </div>
+
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'nhacungcap-update' pk=ncc.pk %}" class="btn btn-warning btn-sm"><i class="fas fa-edit me-1"></i> Sửa</a>
+            <a href="{% url 'nhacungcap-list' %}" class="btn btn-secondary btn-sm">Quay lại</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@ from rest_framework import routers
 from . import views
 from .views import login_view
 from django.contrib.auth.views import LogoutView
-from .views import KhachHangListView
+
 
 
 urlpatterns = [
@@ -26,7 +26,6 @@ urlpatterns = [
     path('nhapkho/them/', views.NhapKhoCreateView.as_view(), name='nhapkho-create'),
     path('nhapkho/<str:ma_nhap>/', views.NhapKhoDetailView.as_view(), name='nhapkho-detail'),
     path('nhapkho/<str:ma_nhap>/sua/', views.NhapKhoUpdateView.as_view(), name='nhapkho-update'),
-    path('nhapkho/import-excel/', views.import_hanghoa_excel, name='import-hanghoa-excel'),
     path('nhapkho/<str:ma_nhap>/xoa/', views.xoa_nhapkho, name='nhapkho-delete'),
     path('nhapkho/<str:ma_nhap>/duyet/', views.duyet_nhapkho, name='duyet-nhapkho'),
     path('nhapkho/<str:ma_nhap>/tu-choi/', views.tu_choi_nhapkho, name='tu-choi-nhapkho'),
@@ -48,9 +47,19 @@ urlpatterns = [
     path('kiem-ke/<str:ma_kiemke>/delete/', views.kiemke_delete, name='kiemke-delete'),
     path('kiem-ke/<str:ma_kiemke>/duyet/', views.duyet_kiemke, name='duyet-kiemke'),
     path('kiem-ke/<str:ma_kiemke>/tu-choi/', views.tu_choi_kiemke, name='tu-choi-kiemke'),
+    path('khachhang/', views.KhachHangListView.as_view(), name='khachhang-list'),
+    path('nhacungcap/', views.NhaCungCapListView.as_view(), name='nhacungcap-list'),
+    path('nhacungcap/create/', views.NhaCungCapCreateView.as_view(), name='nhacungcap-create'),
+    path('nhacungcap/<str:pk>/sua/', views.NhaCungCapUpdateView.as_view(), name='nhacungcap-update'),
+    path('nhacungcap/<str:pk>/xoa/', views.delete_nhacungcap, name='nhacungcap-delete'),
+    path('nhacungcap/<str:pk>/', views.NhaCungCapDetailView.as_view(), name='nhacungcap-detail'),
+    path('kho/', views.KhoListView.as_view(), name='kho-list'),
+    path('kho/<str:ma_kho>/', views.KhoDetailView.as_view(), name='kho-detail'),
 
 
-    path('khachhang/', KhachHangListView.as_view(), name='khachhang-list'),
+
+
+
 
 
     # Thêm các URL khác nếu cần

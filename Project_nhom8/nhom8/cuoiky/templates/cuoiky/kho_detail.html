@@ -1,0 +1,37 @@
+{% extends 'cuoiky/base.html' %}
+{% block title %}Kho: {{ kho.ten_kho }}{% endblock %}
+{% block page_title %}Kho: {{ kho.ten_kho }}{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-warehouse me-2"></i>Tồn kho: {{ kho.ten_kho }}</h5>
+        </div>
+        <div class="card-body">
+            {% if ton_kho %}
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã hàng</th>
+                            <th>Tên hàng</th>
+                            <th>Số lượng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in ton_kho %}
+                        <tr>
+                            <td>{{ item.hang_hoa.ma_hang }}</td>
+                            <td>{{ item.hang_hoa.ten_hang }}</td>
+                            <td>{{ item.so_luong }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Không có hàng tồn trong kho này.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

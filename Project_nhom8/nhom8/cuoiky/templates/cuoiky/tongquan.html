@@ -6,7 +6,7 @@
 {% block title %}Tổng quan - VLXD Xuân Trường{% endblock %}
 
 {% block page_title %}TỔNG QUAN{% endblock %}
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% block content %}
 
     <style>
@@ -20,6 +20,8 @@
             width: 100%;
         }
     </style>
+
+
     <form method="get" action="{% url 'tongquan' %}" class="tw-mb-10">
         <div id="alert-container" class="tw-my-3"></div>
     <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 lg:tw-grid-cols-5 tw-gap-5">
@@ -71,12 +73,16 @@
         <!-- Nút in báo cáo -->
         <div class="tw-flex tw-flex-col tw-justify-end">
            <button type="button" id="btn-export"
+                    data-is-manager="{{ is_manager|yesno:'1,0' }}"
                     class="tw-inline-flex tw-items-center tw-justify-center tw-px-5 tw-py-2.5 tw-text-sm tw-font-semibold tw-text-white tw-bg-gradient-to-r tw-from-green-500 tw-to-emerald-600 tw-rounded-lg hover:tw-from-emerald-500 hover:tw-to-green-600 hover:tw-shadow-lg transition duration-300">
-                <svg class="tw-h-5 tw-w-5 tw-mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17H6a2 2 0 01-2-2V7a2 2 0 012-2h11a2 2 0 012 2v8a2 2 0 01-2 2zM8 21h8m-4-4v4" />
+                <svg class="tw-h-5 tw-w-5 tw-mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M17 17H6a2 2 0 01-2-2V7a2 2 0 012-2h11a2 2 0 012 2v8a2 2 0 01-2 2zM8 21h8m-4-4v4"/>
                 </svg>
                 In báo cáo
             </button>
+
         </div>
 
 
@@ -162,16 +168,16 @@
                 <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ NHẬP KHO</h2>
                 <div class="tw-space-y-3">
                     <div>
-                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu nhập trong tháng:</span>
-                        <span id="phieu-nhap-thang" class="tw-text-blue-500 tw-font-semibold">{{ phieu_nhap_thang_count }}</span>
+                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu nhập:</span>
+                        <span id="phieu-nhap" class="tw-text-blue-500 tw-font-semibold">{{ phieu_nhap_count }}</span>
                     </div>
                     <div>
-                        <span class="tw-text-gray-600 tw-font-medium">Tổng giá trị nhập trong tháng:</span>
-                        <span id="gia-tri-nhap-thang" class="tw-text-green-500 tw-font-semibold">{{ gia_tri_nhap_thang }}</span>
+                        <span class="tw-text-gray-600 tw-font-medium">Tổng giá trị nhập :</span>
+                        <span id="gia-tri-nhap" class="tw-text-green-500 tw-font-semibold">{{ gia_tri_nhap|intcomma }}</span>
                     </div>
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu nhập chờ duyệt:</span>
-                        <span id="phieu-nhap-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_nhap_cho_duyet_count }}</span>
+                        <span id="phieu-nhap-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_nhap_cho_duyet }}</span>
                     </div>
                 </div>
             </div>
@@ -180,16 +186,16 @@
                 <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ XUẤT KHO</h2>
                 <div class="tw-space-y-3">
                     <div>
-                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu xuất trong tháng:</span>
-                        <span id="phieu-xuat-thang" class="tw-text-blue-500 tw-font-semibold">{{ phieu_xuat_thang_count }}</span>
+                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu xuất :</span>
+                        <span id="phieu-xuat" class="tw-text-blue-500 tw-font-semibold">{{ phieu_xuat_count }}</span>
                     </div>
                     <div>
-                        <span class="tw-text-gray-600 tw-font-medium">Tổng giá trị xuất trong tháng:</span>
-                        <span id="gia-tri-xuat-thang" class="tw-text-red-500 tw-font-semibold">{{ gia_tri_xuat_thang|intcomma }} </span>
+                        <span class="tw-text-gray-600 tw-font-medium">Tổng giá trị xuất :</span>
+                        <span id="gia-tri-xuat" class="tw-text-red-500 tw-font-semibold">{{ gia_tri_xuat|intcomma }} </span>
                     </div>
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu xuất chờ duyệt:</span>
-                        <span id="phieu-xuat-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_xuat_cho_duyet_count }}</span>
+                        <span id="phieu-xuat-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_xuat_cho_duyet }}</span>
                     </div>
                 </div>
             </div>
@@ -198,17 +204,18 @@
                 <h2 class="tw-text-xl tw-font-semibold tw-text-gray-700 tw-mb-4">THỐNG KÊ KIỂM KÊ</h2>
                 <div class="tw-space-y-3">
                     <div>
-                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu kiểm kê trong tháng:</span>
-                        <span id="phieu-kiem-ke-thang" class="tw-text-purple-500 tw-font-semibold">{{ phieu_kiem_ke_thang_count }}</span>
+                        <span class="tw-text-gray-600 tw-font-medium">Số phiếu kiểm kê :</span>
+                        <span id="phieu-kiem-ke" class="tw-text-purple-500 tw-font-semibold">{{ phieu_kiem_ke_count }}</span>
                     </div>
                     <div>
                         <span class="tw-text-gray-600 tw-font-medium">Số phiếu kiểm kê chờ duyệt:</span>
-                        <span id="phieu-kiem-ke-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_kiem_ke_cho_duyet_count }}</span>
+                        <span id="phieu-kiem-ke-cho-duyet" class="tw-text-yellow-500 tw-font-semibold">{{ phieu_kiem_ke_cho_duyet }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <script>
         // Lấy dữ liệu từ các phần tử HTML
@@ -218,100 +225,35 @@
         const ganHetHangElement = document.getElementById('gan-het-hang');
         const hetHangElement = document.getElementById('het-hang');
         const tongHangHoaElement = document.getElementById('tong-hang-hoa');
-        const phieuNhapThangElement = document.getElementById('phieu-nhap-thang');
-        const giaTriNhapThangElement = document.getElementById('gia-tri-nhap-thang');
+        const phieuNhapElement = document.getElementById('phieu-nhap');
+        const giaTriNhapElement = document.getElementById('gia-tri-nhap');
         const phieuNhapChoDuyetElement = document.getElementById('phieu-nhap-cho-duyet');
-        const phieuXuatThangElement = document.getElementById('phieu-xuat-thang');
-        const giaTriXuatThangElement = document.getElementById('gia-tri-xuat-thang');
+        const phieuXuatElement = document.getElementById('phieu-xuat');
+        const giaTriXuatElement = document.getElementById('gia-tri-xuat');
         const phieuXuatChoDuyetElement = document.getElementById('phieu-xuat-cho-duyet');
-        const phieuKiemKeThangElement = document.getElementById('phieu-kiem-ke-thang');
+        const phieuKiemKeElement = document.getElementById('phieu-kiem-ke');
         const phieuKiemKeChoDuyetElement = document.getElementById('phieu-kiem-ke-cho-duyet');
         const monthSelect = document.getElementById("month");
         const quarterSelect = document.getElementById("quarter");
-
-
-        // Khởi tạo biểu đồ tròn
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        const pieChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Nhập', 'Xuất'],
-                datasets: [{
-                    label: 'Tỷ lệ Nhập - Xuất',
-                    data: [0, 0], // Giá trị khởi tạo là 0
-                    backgroundColor: [
-                        'rgba(56, 189, 248, 0.7)',
-                        'rgba(220, 38, 38, 0.7)',
-                    ],
-                    borderColor: [
-                        'rgba(56, 189, 248, 1)',
-                        'rgba(220, 38, 38, 1)',
-                    ],
-                    borderWidth: 1,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 14,
-                            },
-                            color: '#6b7280',
-                        },
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed !== null) {
-                                    label += context.parsed + ' đơn vị';
-                                }
-                                return label;
-                            },
-                        },
-                        backgroundColor: '#fff',
-                        titleColor: '#6b7280',
-                        bodyColor: '#374151',
-                        borderColor: '#e5e7eb',
-                        borderWidth: 1,
-                        cornerRadius: 4,
-                        displayColors: true,
-                    },
-                },
-            },
-        });
-
-        // Hàm cập nhật biểu đồ tròn với dữ liệu mới
-        function updatePieChart(importValue, exportValue) {
-            pieChart.data.datasets[0].data = [importValue, exportValue];
-            pieChart.update();
-        }
 
         // Cập nhật dữ liệu khi trang được tải
         document.addEventListener('DOMContentLoaded', function() {
             // Lấy dữ liệu từ các biến Django đã truyền vào template
             const data = {
-                totalImport: {{ total_import }},
-                totalExport: {{ total_export }},
+                totalImport: parseInt('{{ total_import|default_if_none:"0" }}'),
+                totalExport: parseInt('{{ total_export|default_if_none:"0" }}'),
                 conHang: {{ con_hang_count }},
                 ganHetHang: {{ gan_het_hang_count }},
                 hetHang: {{ het_hang_count }},
                 tongHangHoa: {{ tong_hang_hoa_count }},
-                phieuNhapThang: {{ phieu_nhap_thang_count }},
-                giaTriNhapThang: {{ gia_tri_nhap_thang }},
-                phieuNhapChoDuyet: {{ phieu_nhap_cho_duyet_count }},
-                phieuXuatThang: {{ phieu_xuat_thang_count }},
-                giaTriXuatThang: {{ gia_tri_xuat_thang }},
-                phieuXuatChoDuyet: {{ phieu_xuat_cho_duyet_count }},
-                phieuKiemKeThang: {{ phieu_kiem_ke_thang_count }},
-                phieuKiemKeChoDuyet: {{ phieu_kiem_ke_cho_duyet_count }},
+                phieuNhap: {{ phieu_nhap_count }},
+                giaTriNhap: {{ gia_tri_nhap }},
+                phieuNhapChoDuyet: {{ phieu_nhap_cho_duyet_count|default_if_none:"0" }},
+                phieuXuat: {{ phieu_xuat_count }},
+                giaTriXuat: {{ gia_tri_xuat }},
+                phieuXuatChoDuyet: {{ phieu_xuat_cho_duyet_count|default_if_none:"0" }},
+                phieuKiemKe: {{ phieu_kiem_ke_count }},
+                phieuKiemKeChoDuyet: {{ phieu_kiem_ke_cho_duyet_count|default_if_none:"0" }},
             };
 
             // Cập nhật các phần tử HTML với dữ liệu
@@ -321,17 +263,17 @@
             ganHetHangElement.textContent = data.ganHetHang;
             hetHangElement.textContent = data.hetHang;
             tongHangHoaElement.textContent = data.tongHangHoa;
-            phieuNhapThangElement.textContent = data.phieuNhapThang;
-            giaTriNhapThangElement.textContent = data.giaTriNhapThang.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+            phieuNhapElement.textContent = data.phieuNhap;
+            giaTriNhapElement.textContent = data.giaTriNhap.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
             phieuNhapChoDuyetElement.textContent = data.phieuNhapChoDuyet;
-            phieuXuatThangElement.textContent = data.phieuXuatThang;
-            giaTriXuatThangElement.textContent = data.giaTriXuatThang.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+            phieuXuatElement.textContent = data.phieuXuat;
+            giaTriXuatElement.textContent = data.giaTriXuat.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
             phieuXuatChoDuyetElement.textContent = data.phieuXuatChoDuyet;
-            phieuKiemKeThangElement.textContent = data.phieuKiemKeThang;
+            phieuKiemKeElement.textContent = data.phieuKiemKe;
             phieuKiemKeChoDuyetElement.textContent = data.phieuKiemKeChoDuyet;
 
             // Cập nhật biểu đồ tròn với dữ liệu từ Django
-            updatePieChart(data.totalImport, data.totalExport);
+
 
             // Khởi tạo lại các menu collapse
             setTimeout(function() {
@@ -374,18 +316,65 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('pieChart')?.getContext('2d');
+    if (!ctx) {
+        console.error("Không tìm thấy phần tử canvas với id pieChart.");
+        return;
+    }
+
+    const totalImport = parseInt('{{ total_import|default_if_none:"0" }}');
+    const totalExport = parseInt('{{ total_export|default_if_none:"0" }}');
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Nhập', 'Xuất'],
+            datasets: [{
+                data: [totalImport, totalExport],
+                backgroundColor: ['rgba(56, 189, 248, 0.7)', 'rgba(220, 38, 38, 0.7)'],
+                borderColor: ['rgba(56, 189, 248, 1)', 'rgba(220, 38, 38, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 14
+                        },
+                        color: '#6b7280'
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed} đơn vị`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
 
-        if (giaTriNhapThangElement) {
-            const giaTriNhap = parseFloat(giaTriNhapThangElement.textContent);
-            giaTriNhapThangElement.textContent = giaTriNhap.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+        if (giaTriNhapElement) {
+            const giaTriNhap = parseFloat(giaTriNhapElement.textContent);
+            giaTriNhapElement.textContent = giaTriNhap.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
         }
 
-        if (giaTriXuatThangElement) {
-            const giaTriXuat = parseFloat(giaTriXuatThangElement.textContent);
-            giaTriXuatThangElement.textContent = giaTriXuat.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+        if (giaTriXuatElement) {
+            const giaTriXuat = parseFloat(giaTriXuatElement.textContent);
+            giaTriXuatElement.textContent = giaTriXuat.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
         }
 
 
@@ -394,71 +383,40 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const btnExport = document.getElementById("btn-export");
+    const isManager = btnExport.dataset.isManager === "1";
 
     btnExport.addEventListener("click", function () {
-        fetch("{% url 'export_baocao_doc' %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": getCookie("csrftoken"),
-                "X-Requested-With": "XMLHttpRequest"
-            }
-        })
-        .then(async (response) => {
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                const data = await response.json();
-                if (data.success) {
-                    showAlert("success", data.message);
-                } else {
-                    showAlert("danger", data.error || "Không thể in báo cáo.");
-                }
-            } else {
-                const text = await response.text();
-                throw new Error("Server không trả về JSON: " + text.substring(0, 100));
-            }
-        })
-        .catch(error => {
-            showAlert("danger", "Lỗi: " + error.message);
-        });
+        if (!isManager) {
+            showAlert("danger", "Bạn không có quyền in báo cáo. Chỉ Quản lý kho mới được phép.");
+            return;
+        }
+
+        // Nếu là quản lý → mở đường dẫn để tải báo cáo
+        const url = "{% url 'export_baocao_doc' %}?{{ request.GET.urlencode }}";
+        window.location.href = url;
     });
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-            const cookies = document.cookie.split(";");
-            for (let cookie of cookies) {
-                cookie = cookie.trim();
-                if (cookie.startsWith(name + "=")) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById("alert-container");
+        if (!alertContainer) return;
+
+        const div = document.createElement("div");
+        div.className = `alert alert-${type} alert-dismissible fade show`;
+        div.role = "alert";
+        div.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        alertContainer.innerHTML = "";
+        alertContainer.appendChild(div);
+
+        setTimeout(() => {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(div);
+            bsAlert.close();
+        }, 4000);
     }
-
-   function showAlert(type, message) {
-    const alertContainer = document.getElementById("alert-container");
-    if (!alertContainer) return;
-
-    const div = document.createElement("div");
-    div.className = `alert alert-${type} alert-dismissible fade show`;
-    div.role = "alert";
-    div.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-    alertContainer.innerHTML = ""; // clear các cảnh báo trước
-    alertContainer.appendChild(div);
-
-    // Tự động ẩn sau 3 giây
-    setTimeout(() => {
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(div);
-        bsAlert.close();
-    }, 3000);
-}
-
 });
 </script>
+
 
 
 

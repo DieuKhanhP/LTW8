@@ -239,6 +239,11 @@ class NhaCungCap(models.Model):
         verbose_name_plural = "Nhà cung cấp"
         ordering = ['ten_ncc']
 
+def get_default_kho():
+    try:
+        return Kho.objects.filter(loai_kho='LUU_TRU').order_by('ma_kho').first()
+    except:
+        return None  # tránh crash khi migrate lần đầu
 
 # 4. NhapKho
 
@@ -251,6 +256,7 @@ class NhapKho(models.Model):
     ma_nhap = models.CharField(max_length=50, primary_key=True, verbose_name="Mã phiếu nhập")
     nguon_nhap = models.ForeignKey(NhaCungCap, on_delete=models.SET_NULL, null=True, blank=True,
                                    verbose_name="Nhà cung cấp")
+
     thoi_gian = models.DateTimeField(default=timezone.now, verbose_name="Thời gian nhập")
     tinh_trang = models.CharField(
         max_length=50,
@@ -272,7 +278,8 @@ class NhapKho(models.Model):
         on_delete=models.PROTECT,
         related_name='phieu_nhap',
         verbose_name="Kho nhập",
-        default='KHO_DEFAULT'
+        default=get_default_kho
+
     )
     ngay_tao = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo phiếu")
     sdt = models.CharField(max_length=20, blank=True, null=True, verbose_name="Số điện thoại liên hệ")
@@ -414,7 +421,7 @@ class XuatKho(models.Model):
         on_delete=models.PROTECT,
         related_name='phieu_xuat',
         verbose_name="Kho xuất",
-        default='KHO_DEFAULT'
+        default=get_default_kho
     )
     ngay_tao = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo phiếu")
     sdt = models.CharField(max_length=20, blank=True, null=True, verbose_name="Số điện thoại người nhận")
