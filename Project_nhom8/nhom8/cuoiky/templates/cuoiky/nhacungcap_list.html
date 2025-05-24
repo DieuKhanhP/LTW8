@@ -59,9 +59,20 @@
                             <td class="text-center">
                                 <a href="{% url 'nhacungcap-detail' pk=ncc.pk %}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
                                 <a href="{% url 'nhacungcap-update' pk=ncc.pk %}" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                                <a href="#" class="btn btn-sm btn-danger" onclick="confirmDelete('{{ ncc.pk }}', '{{ ncc.ten_ncc }}')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                <button type="button"
+                                        class="btn btn-sm btn-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteNccModal"
+                                        data-ncc-id="{{ ncc.pk }}"
+                                        data-ncc-name="{{ ncc.ten_ncc }}"
+                                        data-delete-url="{% url 'nhacungcap-delete' pk=ncc.pk %}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+
+
+
+
+
 
 
                             </td>
@@ -75,23 +86,50 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="deleteNccModal" tabindex="-1" aria-labelledby="deleteNccModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="deleteNccForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteNccModalLabel">Xác nhận xóa nhà cung cấp</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+        </div>
+        <div class="modal-body">
+          Bạn có chắc chắn muốn xóa <strong id="nccNameText"></strong>?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-danger">Xóa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}
+<!-- Modal xác nhận xóa nhà cung cấp -->
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const deleteModal = document.getElementById('deleteNccModal');
+    const modalForm = document.getElementById('deleteNccForm');
+    const nccNameText = document.getElementById('nccNameText');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const deleteUrl = button.getAttribute('data-delete-url');
+        const nccName = button.getAttribute('data-ncc-name');
+
+        modalForm.action = deleteUrl;
+        nccNameText.textContent = nccName;
+    });
+});
+
+</script>
 {% endblock %}
 
-<script>
-    function confirmDelete(pk, ten_ncc) {
-        Swal.fire({
-            title: 'Xác nhận xóa',
-            html: `Bạn có chắc chắn muốn xóa <strong>${ten_ncc}</strong>?<br>Hành động này không thể hoàn tác.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Xóa',
-            cancelButtonText: 'Hủy',
-            confirmButtonColor: '#dc3545', // Bootstrap red
-            cancelButtonColor: '#6c757d'   // Bootstrap gray
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = `/nhacungcap/${pk}/delete/`; // Cập nhật nếu URL khác
-            }
-        });
-    }
-</script>

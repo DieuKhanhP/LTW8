@@ -6,14 +6,11 @@ from .models import HangHoa  # Import model HangHoa của bạn
 from django.urls import reverse_lazy
 from django.contrib.auth.models import Group
 
-from django.db.models import Q  # Để dùng OR trong query
 
 # Giả sử TINH_TRANG_TONKHO_CHOICES được định nghĩa ở đây hoặc import từ models
 # TINH_TRANG_TONKHO_CHOICES = [ ('CON_HANG', 'Còn hàng'), ('HET_HANG', 'Hết hàng'), ...]
 
-from django.shortcuts import render
-from django.db.models import Sum, Count
-from django.utils import timezone
+
 from .models import HangHoa, NhapKho, XuatKho, KiemKe , KhachHang # Import các model của bạn
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -471,7 +468,7 @@ class NhapKhoListView(ListView):
         # Lọc theo nguồn nhập
         nguon_nhap = self.request.GET.get('nguon_nhap')
         if nguon_nhap:
-            queryset = queryset.filter(nguon_nhap__icontains=nguon_nhap)
+            queryset = queryset.filter(nguon_nhap__ten_ncc__icontains=nguon_nhap)
 
         # Lọc theo tình trạng
         tinh_trang = self.request.GET.get('tinh_trang')
@@ -993,32 +990,28 @@ class XuatKhoListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = XuatKho.objects.all()
+            queryset = super().get_queryset().order_by('-ngay_tao')
+            ma_xuat = self.request.GET.get('ma_xuat')
+            nguon_nhan = self.request.GET.get('nguon_nhan')
+            tinh_trang = self.request.GET.get('tinh_trang')
+            tu_ngay = self.request.GET.get('tu_ngay')
+            den_ngay = self.request.GET.get('den_ngay')
 
-        # Lọc theo mã phiếu
-        ma_xuat = self.request.GET.get('ma_xuat')
-        if ma_xuat:
-            queryset = queryset.filter(ma_xuat__icontains=ma_xuat)
+            if ma_xuat:
+                queryset = queryset.filter(ma_xuat__icontains=ma_xuat)
 
-        # Lọc theo nguồn xuất
-        nguon_xuat = self.request.GET.get('nguon_xuat')
-        if nguon_xuat:
-            queryset = queryset.filter(nguon_xuat__icontains=nguon_xuat)
+            if nguon_nhan:
+                queryset = queryset.filter(nguon_nhan__ten_khachhang__icontains=nguon_nhan)
 
-        # Lọc theo tình trạng
-        tinh_trang = self.request.GET.get('tinh_trang')
-        if tinh_trang:
-            queryset = queryset.filter(tinh_trang=tinh_trang)
+            if tinh_trang:
+                queryset = queryset.filter(tinh_trang=tinh_trang)
 
-        # Lọc theo khoảng thời gian
-        tu_ngay = self.request.GET.get('tu_ngay')
-        den_ngay = self.request.GET.get('den_ngay')
-        if tu_ngay:
-            queryset = queryset.filter(thoi_gian__gte=tu_ngay)
-        if den_ngay:
-            queryset = queryset.filter(thoi_gian__lte=den_ngay)
+            if tu_ngay:
+                queryset = queryset.filter(thoi_gian__gte=tu_ngay)
+            if den_ngay:
+                queryset = queryset.filter(thoi_gian__lte=den_ngay)
 
-        return queryset
+            return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1761,11 +1754,12 @@ class NhaCungCapCreateView(CreateView):
         initial['ma_ncc'] = f"NCC{new_number:04d}"
         return initial
 
+@require_POST
 @login_required
 def delete_nhacungcap(request, pk):
     if not is_quan_ly_kho(request.user):
         messages.error(request, "Bạn không có quyền xóa nhà cung cấp.")
-        return redirect('nhacungcap-detail', pk=pk)
+        return redirect('nhacungcap-list')
 
     ncc = get_object_or_404(NhaCungCap, pk=pk)
     try:

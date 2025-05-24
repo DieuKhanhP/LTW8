@@ -9,8 +9,8 @@
 <form method="get" action="{% url 'nhapkho-list' %}" class="mb-3 p-3 bg-light border rounded">
     <div class="row g-2 align-items-end">
         <div class="col-md">
-            <label for="ma_phieu" class="form-label form-label-sm">Mã phiếu</label>
-            <input type="text" name="ma_phieu" id="ma_phieu" class="form-control form-control-sm" value="{{ request.GET.ma_phieu|default:'' }}">
+            <label for="ma_nhap" class="form-label form-label-sm">Mã phiếu</label>
+            <input type="text" name="ma_nhap" id="ma_nhap" class="form-control form-control-sm" value="{{ request.GET.ma_nhap|default:'' }}">
         </div>
         <div class="col-md">
             <label for="nguon_nhap" class="form-label form-label-sm">Nguồn nhập</label>

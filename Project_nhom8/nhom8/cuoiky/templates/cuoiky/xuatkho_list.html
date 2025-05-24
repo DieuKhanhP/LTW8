@@ -9,12 +9,12 @@
 <form method="get" action="{% url 'xuatkho-list' %}" class="mb-3 p-3 bg-light border rounded">
     <div class="row g-2 align-items-end">
         <div class="col-md">
-            <label for="ma_phieu" class="form-label form-label-sm">Mã phiếu</label>
-            <input type="text" name="ma_phieu" id="ma_phieu" class="form-control form-control-sm" value="{{ request.GET.ma_phieu|default:'' }}">
+            <label for="ma_xuat" class="form-label form-label-sm">Mã phiếu</label>
+            <input type="text" name="ma_xuat" id="ma_xuat" class="form-control form-control-sm" value="{{ request.GET.ma_xuat|default:'' }}">
         </div>
         <div class="col-md">
-            <label for="nguoi_nhan" class="form-label form-label-sm">Nguồn nhận</label>
-            <input type="text" name="nguoi_nhan" id="nguoi_nhan" class="form-control form-control-sm" value="{{ request.GET.nguoi_nhan|default:'' }}">
+            <label for="nguon_nhan" class="form-label form-label-sm">Nguồn nhận</label>
+            <input type="text" name="nguon_nhan" id="nguon_nhan" class="form-control form-control-sm" value="{{ request.GET.nguon_nhan|default:'' }}">
         </div>
         <div class="col-md">
             <label for="tinh_trang" class="form-label form-label-sm">Tình trạng</label>
