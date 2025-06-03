@@ -105,7 +105,8 @@
         <ul class="pagination pagination-sm justify-content-center">
             {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}"
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ search_params }}
+"
                        aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
@@ -120,7 +121,7 @@
                         <li class="page-item active" aria-current="page"><span class="page-link">{{ i }}</span></li>
                     {% else %}
                         <li class="page-item"><a class="page-link"
-                                                  href="?page={{ i }}&{{ request.GET.urlencode }}">{{ i }}</a></li>
+                                                  href="?page={{ i }}&{{ search_params }}">{{ i }}</a></li>
                     {% endif %}
                 {% elif i == paginator.num_pages or i == 1 or i == page_obj.number|add:'-3' == 1 or i == page_obj.number|add:'3' == paginator.num_pages %}
                     {% if i != page_obj.number|add:'-3' and i != page_obj.number|add:'3' %}
@@ -131,7 +132,7 @@
 
             {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}"
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ search_params }}"
                        aria-label="Next">
                         <span aria-hidden="true">&raquo;</span>
                     </a>

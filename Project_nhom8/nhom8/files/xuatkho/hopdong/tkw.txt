@@ -1,0 +1,18 @@
+TỔNG QUAN VỀ HTML
+HTML là các thẻ (tags) đánh dấu , định dạng tiêu đề web, đoạn văn bản, đề mục, bảng biểu 
+
+click phải web -> xem nguồn trang -> thấy đc mã nguồn trang web
+
+
+<html> thẻ mở 
+</html> thẻ đóng 
+
+cấu trúc k ngữ nghĩa vs cấu trúc hướng ngữ nghĩa 
+chung: có thẻ doctype , thẻ mở đóng html 
+khác : thẻ body , dead, footer , main
+vai: lệnh điều hướng 
+
+
+
+
+

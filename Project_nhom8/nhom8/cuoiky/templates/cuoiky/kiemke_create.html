@@ -297,12 +297,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <td class="kho-cell"></td>
             <td>
                 <input type="number" class="form-control form-control-sm so-luong-he-thong"
-       name="so_luong_he_thong_${itemCount}" value="0" readonly>
+   name="so_luong_he_thong_${itemCount}" value="${hangHoa.so_luong}" readonly>
                 <input type="hidden" name="hang_hoa_${itemCount}" value="${hangHoa.ma_hang}">
             </td>
             <td>
                 <input type="number" class="form-control form-control-sm so-luong-thuc-te"
-                    name="so_luong_tai_kho_${itemCount}" value="${hangHoa.so_luong}" min="0" required>
+   name="so_luong_tai_kho_${itemCount}" value="0" min="0" required>
             </td>
             <td>
                 <input type="number" class="form-control form-control-sm chenh-lech"
